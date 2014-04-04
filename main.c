@@ -114,7 +114,7 @@ void main(void)
 	COMPLEX d[2], D[2], E[2][2], Rxx[2][2];
 	COMPLEX_DBL Rxx_dbl[2][2];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
-	
+	COMPLEX W_temp[4];
 	
 	
 	d[0].real = 0.0;
@@ -374,17 +374,12 @@ void main(void)
 			X[CH2 + N2*m + k].cart.imag -= mean2.imag;
 		}	
 		
-			
-//		COMPLEX_sp_mat_mul(Q[k][0][0], 2, TIME_BLOCKS_50PC, X, int c2, COMPLEX *r)
 		
-				
+		// Xp(:,:,k) = Q(:,:,k)*(X(:,:,k)-Xmean); <- MATLAB code for the following loop		
 		for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
 			X[CH1 + N2*m + k].cart = cmplx_add(cmplx_mult(Q[4*k + 0],X[CH1 + N2*m + k].cart),cmplx_mult(Q[4*k + 1],X[CH2 + N2*m + k].cart));
 			X[CH2 + N2*m + k].cart = cmplx_add(cmplx_mult(Q[4*k + 2],X[CH1 + N2*m + k].cart),cmplx_mult(Q[4*k + 3],X[CH2 + N2*m + k].cart));
-			// Not sure why Q needs to be dereferenced here - but oh well ...	
-		//	Xp[k][0][m] = cmplx_add(cmplx_mult(*(Q[k][0]),X1[N2*k + m].cart),cmplx_mult(*(Q[k][1]),X2[N2*k + m].cart)); //
-		//	Xp[k][1][m] = cmplx_add(cmplx_mult(*(Q[k][2]),X1[N2*k + m].cart),cmplx_mult(*(Q[k][3]),X2[N2*k + m].cart));
 		}
 	
 		Wp[4*k + 0].real = 1;// Intialise unmixing matrix at each frequency bin 
@@ -394,13 +389,28 @@ void main(void)
 		Wp[4*k + 2].real = 0;
 		Wp[4*k + 2].imag = 0;
 		Wp[4*k + 3].real = 1;
-		Wp[4*k + 3].imag = 0;/* */		
-		
+		Wp[4*k + 3].imag = 0;	
 	}
+	
 	DSK6713_LED_on(3);	
 	
 	iva(&Xstart_ptr[0], Wp, N2);// IVA algorithm in a separate function
 
+
+	for(k=0;k<N2;k++)
+	{
+		W_temp[4*k + 0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(W[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
+		W_temp[4*k + 1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(W[4*k + 1], Q[4*k + 3]));
+		
+		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(W[4*k + 3], Q[4*k + 2]));
+		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(W[4*k + 3], Q[4*k + 3]));
+	
+		Wp[4*k + 0] = W_temp[4*k + 0];
+		Wp[4*k + 1] = W_temp[4*k + 1]; 
+		Wp[4*k + 2] = W_temp[4*k + 2]; 
+		Wp[4*k + 3] = W_temp[4*k + 3]; 
+	}		
+	
 	
 	while(1);
 }                                 //end of main()

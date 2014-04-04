@@ -24,7 +24,6 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		for(k=0;k<nfreq;k++)
 		{
 			//COMPLEX_sp_mat_mul(&(Wp[4*k + 0]), nsou, nsou, &([CH1 + N2*k + m]), nblocks, &(S[k][0][0]));	
-			
 			for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
 			{
 				S[CH1 + N2*m + k] = cmplx_add(cmplx_mult(Wp[4*k + 0], Xp[CH1 + N2*m + k]), cmplx_mult(Wp[4*k + 1], Xp[CH2 + N2*m + k]));
