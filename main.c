@@ -78,7 +78,7 @@ interrupt void c_int11(void)      //ISR
 	//(input_ptr + buffercount)->numbers[IMAG] = 0.0; 
 	//(input_ptr + buffercount++)->numbers[REAL] = (float)(outdata.channel[LEFT]); 
 		
-	if(t<(TIME_BLOCKS-1))
+	if(t<(TIME_BLOCKS))
 	{	
 		//(X_ptr[t] + buffercount)->numbers[IMAG] = 0.0; 
 		//(X_ptr[t] + buffercount++)->numbers[REAL] = (float)(outdata.channel[LEFT]);	
@@ -108,23 +108,21 @@ void main(void)
 	complexpair buffer1[N],buffer2[N];	// Buffers for the FFTs of length 1024
 	float r,theta;
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
+
 	
 	// IVA variables
 	COMPLEX mean1, mean2, temp[2]; 
-	COMPLEX d[2], D[2], E[2][2], Rxx[2][2];
+	COMPLEX d[2], E[2][2], Rxx[2][2];
 	COMPLEX_DBL Rxx_dbl[2][2];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4];
+	float D[2]={0.0, 0.0};
 	
-	
+
 	d[0].real = 0.0;
 	d[0].imag = 0.0;
-	D[0].real = 0.0;
-	D[0].imag = 0.0;
 	d[1].real = 0.0;
 	d[1].imag = 0.0;
-	D[1].real = 0.0;
-	D[1].imag = 0.0;
 	E[0][0].real = 0.0;
 	E[0][0].imag = 0.0;
 	E[0][1].real = 0.0;
@@ -135,7 +133,7 @@ void main(void)
 	E[1][1].imag = 0.0;
 	
 	for(n=STFT_SIZE;n>STFT_SIZE-N;n--) // write zeros on the end of the buffer 
-	{
+	{									// Is this still necessary? 7-4-2013
 		X[CH1 + n].cart.real=0.0;// 
 		X[CH1 + n].cart.imag=0.0;// 
 	}
@@ -151,17 +149,10 @@ void main(void)
 	DSK6713_LED_off(3);	
 	
 	
-	while(t<TIME_BLOCKS-1)                        //frame processing loop
+	while(t<TIME_BLOCKS)//was(t<TIME_BLOCKS-1)                        //frame processing loop
 	{
-		while(bufferfull==0); //wait until buffer is full 
-    	bufferfull = 0;
-    
-    //	temp_ptr = process_ptr;  //rotate pointers to frames/buffers
-    	//process_ptr = input_ptr; // Only processing for the left channel
-    	//input_ptr = output_ptr;
-    	///output_ptr = temp_ptr;
-    	
-    	
+		//while(bufferfull==0); //wait until buffer is full 
+    	//bufferfull = 0;
     	
 		/* FFTs would have gone here - now done offline 
 		 * if any overlapping is required it'll need to go here. */
@@ -171,7 +162,8 @@ void main(void)
 	
 	
 	// 'Offline' STFT goes here
-	for(n=0; n<N*(TIME_BLOCKS-1); n+=N2)// N2 is half of N
+	//for(n=0; n<N*(TIME_BLOCKS-1); n+=N2)// N2 is half of N
+	for(n=0; n<(N2*TIME_BLOCKS_50PC); n+=N2)// N2 is half of N
 	{	
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
 		for(k=0;k<N;k++)
@@ -181,7 +173,7 @@ void main(void)
 			buffer1[k].cart.imag = 0.0;
 			buffer2[k].cart.imag = 0.0;
 		}
-		// BUT! memcpy seem to be more efficient - this way you can't use the window
+		// BUT! memcpy seems to be more efficient - this way you can't use the window
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
 		// Perform FFT on current buffers
@@ -205,6 +197,21 @@ void main(void)
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N2;k++)// Loop around half the number of frequency bins
 	{
+		D[0] = 0.0;
+		D[1] = 0.0;
+		d[0].real = 0.0;
+		d[0].imag = 0.0;
+		d[1].real = 0.0;
+		d[1].imag = 0.0;
+		E[0][0].real = 0.0;
+		E[0][0].imag = 0.0;
+		E[0][1].real = 0.0;
+		E[0][1].imag = 0.0;
+		E[1][0].real = 0.0;
+		E[1][0].imag = 0.0;
+		E[1][1].real = 0.0;
+		E[1][1].imag = 0.0;
+		
 		mean1.real = 0.0;
 		mean1.imag = 0.0;
 		mean2.real = 0.0;
@@ -339,29 +346,32 @@ void main(void)
 		}
 		//else - No need for an else condition - leave as is.
 	
-		r = mag(d[0]); // magnitude of d
-		theta = arg(d[0]);// = atan(d[0].imag/d[0].real);
-		D[0].real = -sqrt(r)*cos(theta/2);
-		D[0].imag = sqrt(r)*sin(-theta/2);
-		r = mag(d[1]);//sqrt(pow(d[1],2) + pow(d[1],2)); //pythagoras
-		theta = arg(d[1]);//atan(d[1].imag/d[1].real);
-		D[1].real = -sqrt(r)*cos(theta/2);
-		D[1].imag = sqrt(r)*sin(-theta/2);
-//		D[0] = 1 / sqrt(d[order[0]]);
-//		D[1] = 1 / sqrt(d[order[1]]);
+	// --- OLD WAY OF FINDING D
+		// Find D^(-.5), though it's complex so we use de Moivre's formula
+		//r = mag(d[0]); // magnitude of d[0]
+		//theta = arg(d[0]); // argument of d[0]
+		//D[0] = -(1/sqrt(r))*cos(theta/2); // only calculate the real part
+		//D[0].imag = sqrt(r)*sin(-theta/2); // Imaginary part is dropped in original code
 		
+		//r = mag(d[1]);//sqrt(pow(d[1],2) + pow(d[1],2)); //pythagoras
+		//theta = arg(d[1]);//atan(d[1].imag/d[1].real);
+		//D[1] = -(1/sqrt(r))*cos(theta/2); // only calculate the real part
+		//D[1].imag = sqrt(r)*sin(-theta/2);
+
+	// -- NEW WAY -- Throw away imaginary part completely
+		D[0] = pow(d[0].real,-0.5);
+		D[1] = pow(d[1].real,-0.5);
 		
 	
-		// 2*2 matrix complex multiplication where the non-diagonal elements are zero
-		Q[4*k + 0].real = (D[0].real*E[0][0].real) + (D[0].imag*E[0][0].imag); 
-		Q[4*k + 0].imag = (D[0].imag*E[0][0].real) - (D[0].real*E[0][0].imag);
-		Q[4*k + 1].real = (D[0].real*E[0][1].real) + (D[0].imag*E[0][1].imag);
-		Q[4*k + 1].imag = (D[0].imag*E[0][1].real) - (D[0].real*E[0][1].imag);
-		Q[4*k + 2].real = (D[1].real*E[1][0].real) + (D[1].imag*E[1][0].imag);
-		Q[4*k + 2].imag = (D[1].real*E[1][0].real) - (D[1].real*E[1][0].imag);
-		Q[4*k + 3].real = (D[1].real*E[1][1].real) + (D[1].imag*E[1][1].imag);
-		Q[4*k + 3].imag = (D[1].imag*E[1][1].real) - (D[1].real*E[1][1].imag);
-		// Loop goes here for Xp(:,:,k) = Q(:,:,k)*(X(:,:,k)-Xmean);
+		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
+		Q[4*k + 0].real = D[0] * E[0][0].real; 
+		Q[4*k + 0].imag = D[0] * E[0][0].imag * (-1);// Hermitian transpose
+		Q[4*k + 1].real = D[0] * E[1][0].real; 
+		Q[4*k + 1].imag = D[0] * E[1][0].imag * (-1);
+		Q[4*k + 2].real = D[1] * E[0][1].real; 
+		Q[4*k + 2].imag = D[1] * E[0][1].imag * (-1);
+		Q[4*k + 3].real = D[1] * E[1][1].real; 
+		Q[4*k + 3].imag = D[1] * E[1][1].imag * (-1);
 	
 			
 			
@@ -378,8 +388,11 @@ void main(void)
 		// Xp(:,:,k) = Q(:,:,k)*(X(:,:,k)-Xmean); <- MATLAB code for the following loop		
 		for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
-			X[CH1 + N2*m + k].cart = cmplx_add(cmplx_mult(Q[4*k + 0],X[CH1 + N2*m + k].cart),cmplx_mult(Q[4*k + 1],X[CH2 + N2*m + k].cart));
-			X[CH2 + N2*m + k].cart = cmplx_add(cmplx_mult(Q[4*k + 2],X[CH1 + N2*m + k].cart),cmplx_mult(Q[4*k + 3],X[CH2 + N2*m + k].cart));
+			temp[0] = cmplx_add(cmplx_mult(Q[4*k + 0],X[CH1 + N2*m + k].cart), cmplx_mult(Q[4*k + 1],X[CH2 + N2*m + k].cart));
+			temp[1] = cmplx_add(cmplx_mult(Q[4*k + 2],X[CH1 + N2*m + k].cart), cmplx_mult(Q[4*k + 3],X[CH2 + N2*m + k].cart));
+			
+			X[CH1 + N2*m + k].cart = temp[0]; 
+			X[CH2 + N2*m + k].cart = temp[1];
 		}
 	
 		Wp[4*k + 0].real = 1;// Intialise unmixing matrix at each frequency bin 
@@ -399,11 +412,11 @@ void main(void)
 
 	for(k=0;k<N2;k++)
 	{
-		W_temp[4*k + 0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(W[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
-		W_temp[4*k + 1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(W[4*k + 1], Q[4*k + 3]));
+		W_temp[4*k + 0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
+		W_temp[4*k + 1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));
 		
-		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(W[4*k + 3], Q[4*k + 2]));
-		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(W[4*k + 3], Q[4*k + 3]));
+		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
+		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));
 	
 		Wp[4*k + 0] = W_temp[4*k + 0];
 		Wp[4*k + 1] = W_temp[4*k + 1]; 
