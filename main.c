@@ -1,7 +1,7 @@
 /*
- * main.c - written by Jack Harris Feburary-March 2014, Loughborough, UK.
+ * main.c - written by Jack Harris Feburary-March-April 2014, Loughborough, UK.
  * 
- * Working copy
+ * Inverse STFT still needs to be implemented.
  * 
  * Interrupt - continuous 'feedthrough' audio system continuously taking audio data
  * from the line in and outputting it to the headphones.
@@ -10,7 +10,8 @@
  * LED 2) Indicates 1024 point FFT / STFT is in progress with 50% overlapping and 
  * 			optional windowing (see note).
  * LED 3) PCA in progress.
- * LED 4) PCA is complete. Though feedthrough audio continues via the interrupt.
+ * LED 4) PCA is complete. Though feedthrough audio continues via the interrupt. IVA 
+ * 			in progress 
  * 
  * Twiddle values for the FFT are generated in MATLAB (generate_twiddles.m) due to 
  * previous problems with the cos (cosine) function with the TI toolchain.
@@ -21,14 +22,17 @@
  * (in this case 1024/2), and repeating process to obtain the FFTs 'inbetween' the 
  * nonoverlapped FFTs.
  * 
- * The PCA has been debugged - but functionality hasn't been check (does it give the 
- * correct result?).
+ * The PCA and whitening has been fully debugged. Returns identity matrix when two 
+ * corresponding frequency bins are compared (i.e. they are uncorrelated).
  * 
- * IVA has been been debugged and gives a 'sensible' looking Wp (no NaNs).
+ * IVA has been been debugged. This has been verified with the output of the IVA 
+ * algorithm in MATLAB (provided by Taesu Kim). The exit clause needs to be investigated,
+ * this version runs too long/too short. However returns the correct Wp (or near enough).
  * 
  * The program can suffer from NaN propogating through each stage, this is POSSIBLY 
  * caused by the FFT code from Chassaing's book and dealing with large input values, 
- * in future versions scaling needs to be considered. 
+ * in future versions scaling needs to be considered. Possibly turn down the volume 
+ * of whatever is driving the audio in. 
  * 
  * Losely based on the original file in Rulph Chassaing's TMS320C6713 DSK book:
  * frames.c - basic illustration of triple-buffered
@@ -106,7 +110,7 @@ void main(void)
 	unsigned short n=0,m=0,k=0; // k is the freqency bin index
 	complexpair *w_ptr = (complexpair*)w;
 	complexpair buffer1[N],buffer2[N];	// Buffers for the FFTs of length 1024
-	float r,theta;
+	//float r,theta;
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
 
 	
@@ -288,20 +292,16 @@ void main(void)
 			temp[1].real = X[CH2 + N2*m + k].cart.real - mean2.real;
 			temp[1].imag = X[CH2 + N2*m + k].cart.imag - mean2.imag;
 			
-			dbl_conver = cmplx_mult(temp[0],temp[0]);
-			//Rxx_dbl[0][0].real = Rxx_dbl[0][0].real + (double)dbl_conver.real;
-			//Rxx_dbl[0][0].imag = Rxx_dbl[0][0].imag + (double)dbl_conver.imag;
+			dbl_conver = cmplx_mult(temp[0], conj(temp[0]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][0].real += (double)dbl_conver.real;
 			Rxx_dbl[0][0].imag += (double)dbl_conver.imag;
 			
 			
-			dbl_conver = cmplx_mult(temp[0],temp[1]);
-			//Rxx_dbl[0][1].real = Rxx_dbl[0][1].real + (double)dbl_conver.real;
-			//Rxx_dbl[0][1].imag = Rxx_dbl[0][1].imag + (double)dbl_conver.imag;
+			dbl_conver = cmplx_mult(temp[0], conj(temp[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][1].real += (double)dbl_conver.real;
 			Rxx_dbl[0][1].imag += (double)dbl_conver.imag;
 			
-			dbl_conver = cmplx_mult(temp[1],temp[1]);
+			dbl_conver = cmplx_mult(temp[1], conj(temp[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[1][1].real += (double)dbl_conver.real;
 			Rxx_dbl[1][1].imag += (double)dbl_conver.imag;
 		}
