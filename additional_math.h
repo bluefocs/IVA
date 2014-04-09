@@ -116,6 +116,13 @@ float arg(COMPLEX x)
 {
 	return atan(x.imag/x.real);
 }
+COMPLEX conj(COMPLEX z)
+{
+	COMPLEX out;
+	out.real = z.real;
+	out.imag = (-1)*z.imag;
+	return out;
+}
 COMPLEX cmplx_mult(COMPLEX z1, COMPLEX z2)
 {
 	COMPLEX out;
