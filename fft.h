@@ -1,21 +1,7 @@
 //fft.h complex FFT function taken from Rulph's C31 book
 //this file contains definition of complex dat structure also
+#include "definitions.h"
 
-struct cmpx                       //complex data structure used by FFT
-    {
-    float real;
-    float imag;
-    };
-typedef struct cmpx COMPLEX;
-
-typedef union complexdata 
-{
-		float numbers[2];
-		float number;
-		long unsigned int full;
-		COMPLEX cart;//Stands for cartesian - defined in fft.h
-		
-}complexpair;
 void jack_fft(COMPLEX *Y, int M, COMPLEX *w)
 {
 	COMPLEX temp1,temp2; //temporary storage variables

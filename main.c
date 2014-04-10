@@ -119,7 +119,7 @@ void main(void)
 	COMPLEX d[2], E[2][2], Rxx[2][2];
 	COMPLEX_DBL Rxx_dbl[2][2];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
-	COMPLEX W_temp[4];
+	COMPLEX W_temp[4],W_inv[4];
 	float D[2]={0.0, 0.0};
 	
 
@@ -409,7 +409,7 @@ void main(void)
 	
 	iva(&Xstart_ptr[0], Wp, N2);// IVA algorithm in a separate function
 
-
+	// Now convert Wp to the actual unmixing matrix W
 	for(k=0;k<N2;k++)
 	{
 		W_temp[4*k + 0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
@@ -418,10 +418,19 @@ void main(void)
 		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
 		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));
 	
-		Wp[4*k + 0] = W_temp[4*k + 0];
-		Wp[4*k + 1] = W_temp[4*k + 1]; 
-		Wp[4*k + 2] = W_temp[4*k + 2]; 
-		Wp[4*k + 3] = W_temp[4*k + 3]; 
+		//Wp[4*k + 0] = W_temp[4*k + 0];
+		//Wp[4*k + 1] = W_temp[4*k + 1]; 
+		//Wp[4*k + 2] = W_temp[4*k + 2]; 
+		//Wp[4*k + 3] = W_temp[4*k + 3]; 
+		
+		
+		
+		inv_2x2(&Wp[4*k + 0], &W_inv[0]);
+		// 2*2 matrix complex multiplication where the non-diagonal elements are zero
+		Wp[4*k + 0] = cmplx_mult(W_inv[0], W_temp[4*k + 0]);
+		Wp[4*k + 1] = cmplx_mult(W_inv[0], W_temp[4*k + 1]); 
+		Wp[4*k + 2] = cmplx_mult(W_inv[1], W_temp[4*k + 2]); 
+		Wp[4*k + 3] = cmplx_mult(W_inv[1], W_temp[4*k + 3]); 
 	}		
 	
 	

@@ -7,6 +7,21 @@ struct cmpx_dbl                       //complex data structure used by FFT
     };
 typedef struct cmpx_dbl COMPLEX_DBL;
 
+struct cmpx                       //complex data structure used by FFT
+    {
+    float real;
+    float imag;
+    };
+typedef struct cmpx COMPLEX;
+
+typedef union complexdata 
+{
+		float numbers[2];
+		float number;
+		long unsigned int full;
+		COMPLEX cart;//Stands for cartesian - defined in fft.h
+		
+}complexpair;
 
 #define DSK6713_AIC23_INPUT_MIC 0x0015
 #define DSK6713_AIC23_INPUT_LINE 0x0011
