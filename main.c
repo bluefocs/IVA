@@ -119,7 +119,7 @@ void main(void)
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
 
 	
-	// IVA variables
+	// PCA variables
 	COMPLEX mean1, mean2, temp[2]; 
 	COMPLEX d[2], E[2][2], Rxx[2][2];
 	COMPLEX_DBL Rxx_dbl[2][2];
@@ -365,9 +365,12 @@ void main(void)
 	// -- NEW WAY -- Throw away imaginary part completely
 		//D[0] = pow(d[0].real,-0.5);
 		//D[1] = pow(d[1].real,-0.5);
-		D[0] = 1.0/sqrt(d[0].real);
-		D[1] = 1.0/sqrt(d[1].real);
+//		D[0] = 1.0/sqrt(d[0].real);
+//		D[1] = 1.0/sqrt(d[1].real);
+		D[0] = FastInvSqrt(d[0].real); // Google fast inverse square root for more info
+		D[1] = FastInvSqrt(d[1].real);
 		
+	
 	
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
 		Q[4*k + 0].real = D[0] * E[0][0].real; 
@@ -415,20 +418,14 @@ void main(void)
 	
 	iva(&Xstart_ptr[0], Wp, N2);// IVA algorithm in a separate function
 
-	// Now convert Wp to the actual unmixing matrix W
+	// Now convert Wp to the actual unmixing matrix W (unwhitening stage?)
 	for(k=0;k<N2;k++)
 	{
 		W_temp[0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
 		W_temp[1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));
 		
 		W_temp[2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
-		W_temp[3] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));
-	
-		//Wp[4*k + 0] = W_temp[4*k + 0];
-		//Wp[4*k + 1] = W_temp[4*k + 1]; 
-		//Wp[4*k + 2] = W_temp[4*k + 2]; 
-		//Wp[4*k + 3] = W_temp[4*k + 3]; 
-		
+		W_temp[3] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));		
 		
 		
 		inv_2x2(&W_temp[0], &W_inv[0]);

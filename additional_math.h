@@ -5,6 +5,7 @@
 
 
 /* Function prototypes*/
+float FastInvSqrt(float x);
 void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs);
 float mag(COMPLEX x);
 float arg(COMPLEX x);
