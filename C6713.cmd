@@ -35,11 +35,11 @@ SECTIONS
 	.data          >  IRAM
 	.switch        >  IRAM
 	.sysmem        >  IRAM
-	.far           >  EMIFCE0
+	.far           >  IRAM
   .args          >  IRAM
 	.ppinfo        >  IRAM
 	.ppdata        >  IRAM
-
+	
   /* COFF sections */
 	.pinit         >  IRAM
 	.cinit         >  IRAM

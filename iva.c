@@ -1,15 +1,18 @@
 #include "iva.h"
 #include "definitions.h"
 #include "additional_math.h"
+//#include "c67fastMath.h"
+
 COMPLEX S[N2 * 2 * TIME_BLOCKS_50PC]; //
+#pragma DATA_SECTION(S,".EXT_RAM")
 void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 {
 	short k=0, m=0;
-	unsigned short maxiter=1000, iter=0;
+	unsigned short maxiter=100, iter=0;
 	float mu=0.1;
 	COMPLEX detWp;
 	float Ssq[TIME_BLOCKS_50PC * NSOURCES];
-	double epsilon = 0.000001;
+	double epsilon = 0.00001;
 	COMPLEX W_temp[4], W_new[4];//, detWp;	
 	COMPLEX Phi[TIME_BLOCKS_50PC * NSOURCES];
 	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
@@ -36,6 +39,10 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			{
 				Ssq[ m ] += pow(mag(S[CH1 + N2*m + k]), 2.0);
 				Ssq[TIME_BLOCKS_50PC+m] += pow(mag(S[CH2 + N2*m + k]), 2.0);
+				// Use TI's optimised fastmath library
+				//Ssq[ m ] += powsp(mag(S[CH1 + N2*m + k]),2.0);
+				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
+				
 			}
 			
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 

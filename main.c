@@ -1,7 +1,6 @@
 /*
  * main.c - written by Jack Harris Feburary-March-April 2014, Loughborough, UK.
  * 
- * Inverse STFT still needs to be implemented.
  * 
  * Interrupt - continuous 'feedthrough' audio system continuously taking audio data
  * from the line in and outputting it to the headphones.
@@ -18,8 +17,9 @@
  * 
  * The STFT works by first assuming no overlap, the overlap is created by calculating 
  * each FFT in turn, but only writting the first half of the transformed signal back to 
- * memory (as the FFT of a real signal is symetrical), then advancing half the FFT size
- * (in this case 1024/2), and repeating process to obtain the FFTs 'inbetween' the 
+ * memory (as the FFT of a real signal is symmetrical), then advancing half the FFT size
+ * (in this case 1024/2), and repe
+ * ating process to obtain the FFTs 'inbetween' the 
  * nonoverlapped FFTs.
  * 
  * The PCA and whitening has been fully debugged. Returns identity matrix when two 
@@ -38,8 +38,12 @@
  * frames.c - basic illustration of triple-buffered
  *  N sample frame-based processing
  * 
+ * TO DO LIST:
+ *  - Inverse STFT still needs to be implemented.
+ *  - (Possibly) expand frequency bins from 512 to 1024 (don't throw away half the 
+ * 		frequency bins to speed up processing)
+ * 
  */
-//#include <stdio.h>
 #include "dsk6713.h"
 #include "DSK6713_AIC23.h"	//codec-DSK interface support
 #include "fft.h"
@@ -54,9 +58,7 @@ DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
 Uint16 inputsource=DSK6713_AIC23_INPUT_LINE; // select input source
 
 
-//far union complexdata X[STFT_SIZE];
-far union complexdata X[NSOURCES*STFT_SIZE];// Used to store time data, freq domain data and whitened data
-//far union complexdata X1[STFT_SIZE], X2[STFT_SIZE];
+union complexdata X[NSOURCES*STFT_SIZE];// Used to store time data, freq domain data and whitened data
 unsigned short buffercount = 0;            //number of new input samples in buffer 
 unsigned short bufferfull = 0;                   //set by ISR to indicate iobuffer full
 static unsigned short t = 0;
@@ -66,8 +68,11 @@ COMPLEX *Xstart_ptr;
 
 
 // IVA variables - placed here so that the code works
-far COMPLEX Q[N2*4];// 2*2 matrix at each freq bin
-far COMPLEX Wp[N2*4];
+COMPLEX Q[N2*4];// 2*2 matrix at each freq bin
+COMPLEX Wp[N2*4];
+#pragma DATA_SECTION(X,".EXT_RAM")
+#pragma DATA_SECTION(Q,".EXT_RAM")
+#pragma DATA_SECTION(Wp,".EXT_RAM")
 
 interrupt void c_int11(void)      //ISR
 {
@@ -121,7 +126,6 @@ void main(void)
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];
 	float D[2]={0.0, 0.0};
-	
 
 	d[0].real = 0.0;
 	d[0].imag = 0.0;
@@ -359,8 +363,10 @@ void main(void)
 		//D[1].imag = sqrt(r)*sin(-theta/2);
 
 	// -- NEW WAY -- Throw away imaginary part completely
-		D[0] = pow(d[0].real,-0.5);
-		D[1] = pow(d[1].real,-0.5);
+		//D[0] = pow(d[0].real,-0.5);
+		//D[1] = pow(d[1].real,-0.5);
+		D[0] = 1.0/sqrt(d[0].real);
+		D[1] = 1.0/sqrt(d[1].real);
 		
 	
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
@@ -412,11 +418,11 @@ void main(void)
 	// Now convert Wp to the actual unmixing matrix W
 	for(k=0;k<N2;k++)
 	{
-		W_temp[4*k + 0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
-		W_temp[4*k + 1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));
+		W_temp[0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
+		W_temp[1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));
 		
-		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
-		W_temp[4*k + 2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));
+		W_temp[2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
+		W_temp[3] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));
 	
 		//Wp[4*k + 0] = W_temp[4*k + 0];
 		//Wp[4*k + 1] = W_temp[4*k + 1]; 
@@ -425,14 +431,12 @@ void main(void)
 		
 		
 		
-		inv_2x2(&Wp[4*k + 0], &W_inv[0]);
+		inv_2x2(&W_temp[0], &W_inv[0]);
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero
-		Wp[4*k + 0] = cmplx_mult(W_inv[0], W_temp[4*k + 0]);
-		Wp[4*k + 1] = cmplx_mult(W_inv[0], W_temp[4*k + 1]); 
-		Wp[4*k + 2] = cmplx_mult(W_inv[1], W_temp[4*k + 2]); 
-		Wp[4*k + 3] = cmplx_mult(W_inv[1], W_temp[4*k + 3]); 
-	}		
-	
-	
+		Wp[4*k + 0] = cmplx_mult(W_inv[0], W_temp[0]);
+		Wp[4*k + 1] = cmplx_mult(W_inv[0], W_temp[1]); 
+		Wp[4*k + 2] = cmplx_mult(W_inv[1], W_temp[2]); 
+		Wp[4*k + 3] = cmplx_mult(W_inv[1], W_temp[3]); 
+	}			
 	while(1);
 }                                 //end of main()

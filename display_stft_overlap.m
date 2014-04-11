@@ -26,7 +26,7 @@ a=1;
 
 
 for n=1:time_blocks
-    for m=1:freq_bins
+    for m=1:freq_bins-1
         stft_image(m,n) = fftdata(a) + j * fftdata(a+1);        
         a=a+step;
     end
