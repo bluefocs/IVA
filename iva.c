@@ -1,44 +1,45 @@
 #include "iva.h"
 #include "definitions.h"
 #include "additional_math.h"
-//#include "c67fastMath.h"
 
-COMPLEX S[N2 * 2 * TIME_BLOCKS_50PC]; //
+COMPLEX S[N * 2 * TIME_BLOCKS]; //
 #pragma DATA_SECTION(S,".EXT_RAM")
 void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 {
-	short k=0, m=0;
+	unsigned short k=0, m=0, i=0;
 	unsigned short maxiter=100, iter=0;
 	float mu=0.1;
 	COMPLEX detWp;
-	float Ssq[TIME_BLOCKS_50PC * NSOURCES];
+	float Ssq[TIME_BLOCKS * NSOURCES];
 	double epsilon = 0.00001;
 	COMPLEX W_temp[4], W_new[4];//, detWp;	
-	COMPLEX Phi[TIME_BLOCKS_50PC * NSOURCES];
+	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
 	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
 	
 	for(iter=0;iter<maxiter;iter++)
 	{
 		dlw = 0;
 		
-		for(k=0;k<nfreq;k++)
+		for(k=0;k<N;k++)
 		{
 			//COMPLEX_sp_mat_mul(&(Wp[4*k + 0]), nsou, nsou, &([CH1 + N2*k + m]), nblocks, &(S[k][0][0]));	
-			for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
+			for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
 			{
-				S[CH1 + N2*m + k] = cmplx_add(cmplx_mult(Wp[4*k + 0], Xp[CH1 + N2*m + k]), cmplx_mult(Wp[4*k + 1], Xp[CH2 + N2*m + k]));
-				S[CH2 + N2*m + k] = cmplx_add(cmplx_mult(Wp[4*k + 2], Xp[CH1 + N2*m + k]), cmplx_mult(Wp[4*k + 3], Xp[CH2 + N2*m + k]));
+				i = N*m + k;
+				S[CH1 + i] = cmplx_add(cmplx_mult(Wp[4*k + 0], Xp[CH1 + i]), cmplx_mult(Wp[4*k + 1], Xp[CH2 + i]));
+				S[CH2 + i] = cmplx_add(cmplx_mult(Wp[4*k + 2], Xp[CH1 + i]), cmplx_mult(Wp[4*k + 3], Xp[CH2 + i]));
 			}
 		}
 		
 		SumSsq=0.0;
 		// Calculate score function function - derived from the multivariate Gaussian distribution function.
-		for(m=0;m<TIME_BLOCKS_50PC;m++) // Summnation loop - Can this be sped up ? and be done with double precision?
+		for(m=0;m<TIME_BLOCKS;m++) // Summnation loop - Can this be sped up ? and be done with double precision?
 		{
 			for(k=0;k<nfreq;k++)
 			{
-				Ssq[ m ] += pow(mag(S[CH1 + N2*m + k]), 2.0);
-				Ssq[TIME_BLOCKS_50PC+m] += pow(mag(S[CH2 + N2*m + k]), 2.0);
+				i = N*m + k;
+				Ssq[ m ] += pow(mag(S[CH1 + i]), 2.0);
+				Ssq[TIME_BLOCKS+m] += pow(mag(S[CH2 + i]), 2.0);
 				// Use TI's optimised fastmath library
 				//Ssq[ m ] += powsp(mag(S[CH1 + N2*m + k]),2.0);
 				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
@@ -46,17 +47,17 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			}
 			
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
-			Ssq[TIME_BLOCKS_50PC+m] = sqrt(Ssq[TIME_BLOCKS_50PC+m]); // Channel 2
+			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
 			
 			// Calculate the sum of all the values in Ssq before the inverse is taken, this is used in the break condition below
-			SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS_50PC+m];
+			SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS+m];
 		}
 		
 		// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
-		for(m=0;m<TIME_BLOCKS_50PC;m++) // Take the summnation of 
+		for(m=0;m<TIME_BLOCKS;m++) // Take the summnation of 
 		{
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
-			Ssq[TIME_BLOCKS_50PC+m]=1.0/(Ssq[TIME_BLOCKS_50PC+m] + epsilon);	//Channel 2
+			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
 		}
 		
 		
@@ -64,14 +65,14 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		for(k=0;k<nfreq;k++)
 		{
 			//Calculate multivariate score function and gradients
-			for(m=0; m<TIME_BLOCKS_50PC; m++)
+			for(m=0; m<TIME_BLOCKS; m++)
 			{
 				// Unrolled the source loop
-					
-				Phi[ CH1 + m ].real = S[CH1 + N2*m + k].real * Ssq[CH1 + m]; // Phi exists at each frequency bin for each channel
-				Phi[ CH1 + m ].imag = S[CH1 + N2*m + k].imag * Ssq[CH1 + m];	
-				Phi[TIME_BLOCKS_50PC+m].real = S[CH2 + N2*m + k].real * Ssq[TIME_BLOCKS_50PC + m]; // Phi exists at each frequency bin for each channel
-				Phi[TIME_BLOCKS_50PC+m].imag = S[CH2 + N2*m + k].imag * Ssq[TIME_BLOCKS_50PC + m];			
+				i = N*m + k;
+				Phi[ CH1 + m ].real = S[CH1 + i].real * Ssq[CH1 + m]; // Phi exists at each frequency bin for each channel
+				Phi[ CH1 + m ].imag = S[CH1 + i].imag * Ssq[CH1 + m];	
+				Phi[TIME_BLOCKS+m].real = S[CH2 + i].real * Ssq[TIME_BLOCKS + m]; // Phi exists at each frequency bin for each channel
+				Phi[TIME_BLOCKS+m].imag = S[CH2 + i].imag * Ssq[TIME_BLOCKS + m];			
 			}
 			
 			W_temp[0].real=0.0;
@@ -91,23 +92,24 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			W_new[3].real=1.0;
 			W_new[3].imag=0.0;
 
-			for(m=0;m<TIME_BLOCKS_50PC;m++) // Part of dWp(:,:,k) = (eye(nsou) - Phi*S(:,:,k)'/N)*Wp(:,:,k);
+			for(m=0;m<TIME_BLOCKS;m++) // Part of dWp(:,:,k) = (eye(nsou) - Phi*S(:,:,k)'/N)*Wp(:,:,k);
 			{
-				W_temp[0] = cmplx_add(W_temp[0], cmplx_mult(Phi[CH1 + m], conj(S[CH1 + N2*m + k])));
-				W_temp[1] = cmplx_add(W_temp[1], cmplx_mult(Phi[CH1 + m], conj(S[CH2 + N2*m + k])));
-				W_temp[2] = cmplx_add(W_temp[2], cmplx_mult(Phi[TIME_BLOCKS_50PC + m], conj(S[CH1 + N2*m + k])));
-				W_temp[3] = cmplx_add(W_temp[3], cmplx_mult(Phi[TIME_BLOCKS_50PC + m], conj(S[CH2 + N2*m + k])));
+				i = N*m + k;
+				W_temp[0] = cmplx_add(W_temp[0], cmplx_mult(Phi[CH1 + m], conj(S[CH1 + i])));
+				W_temp[1] = cmplx_add(W_temp[1], cmplx_mult(Phi[CH1 + m], conj(S[CH2 + i])));
+				W_temp[2] = cmplx_add(W_temp[2], cmplx_mult(Phi[TIME_BLOCKS + m], conj(S[CH1 + i])));
+				W_temp[3] = cmplx_add(W_temp[3], cmplx_mult(Phi[TIME_BLOCKS + m], conj(S[CH2 + i])));
 			}
 			
 			
-			W_temp[0].real = 1.0 - (W_temp[0].real / (float)TIME_BLOCKS_50PC);
-			W_temp[0].imag = 0.0 - (W_temp[0].imag / (float)TIME_BLOCKS_50PC);
-			W_temp[1].real = 0.0 - (W_temp[1].real / (float)TIME_BLOCKS_50PC);
-			W_temp[1].imag = 0.0 - (W_temp[1].imag / (float)TIME_BLOCKS_50PC);
-			W_temp[2].real = 0.0 - (W_temp[2].real / (float)TIME_BLOCKS_50PC);
-			W_temp[2].imag = 0.0 - (W_temp[2].imag / (float)TIME_BLOCKS_50PC);
-			W_temp[3].real = 1.0 - (W_temp[3].real / (float)TIME_BLOCKS_50PC);
-			W_temp[3].imag = 0.0 - (W_temp[3].imag / (float)TIME_BLOCKS_50PC);
+			W_temp[0].real = 1.0 - (W_temp[0].real / (float)TIME_BLOCKS);
+			W_temp[0].imag = 0.0 - (W_temp[0].imag / (float)TIME_BLOCKS);
+			W_temp[1].real = 0.0 - (W_temp[1].real / (float)TIME_BLOCKS);
+			W_temp[1].imag = 0.0 - (W_temp[1].imag / (float)TIME_BLOCKS);
+			W_temp[2].real = 0.0 - (W_temp[2].real / (float)TIME_BLOCKS);
+			W_temp[2].imag = 0.0 - (W_temp[2].imag / (float)TIME_BLOCKS);
+			W_temp[3].real = 1.0 - (W_temp[3].real / (float)TIME_BLOCKS);
+			W_temp[3].imag = 0.0 - (W_temp[3].imag / (float)TIME_BLOCKS);
 			
 			
 			// 2 by many matrix multiplied by many by 2 matrix
@@ -135,7 +137,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		
 		// Sum of Ssq is worked out in the loops above before the inverse is taken.	
 		//Obj = ((SumSsq/N) - dlw)/(NSOURCES*nfreq);
-		Obj = (((double)SumSsq/(double)TIME_BLOCKS_50PC) - dlw)/((double)NSOURCES*(double)nfreq);
+		Obj = (((double)SumSsq/(double)TIME_BLOCKS) - dlw)/((double)NSOURCES*(double)nfreq);
 		
 		
 		dObj = pObj - Obj; // Work out change in Obj

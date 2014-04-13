@@ -70,7 +70,8 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 	//arg = tan((0.5*T.imag*T.real - D.imag)/((pow(T.real,2)-pow(T.imag,2))/4 - D.real));
 	//r = pow((pow(T.real,2)-pow(T.imag,2))/4 - D.real,2) + pow((0.5*T.imag*T.real - D.imag),2);
 	//r = sqrt((double)r);
-	r = pow((double)r, 0.5);
+	//r = pow((double)r, 0.5);
+	r = sqrt(r);
 	eigvals[0].real = (Tr/2.0) + sqrt(r)*cos(0.5*arg);
 	eigvals[0].imag = (Ti/2.0) + sqrt(r)*sin(0.5*arg);
 	eigvals[1].real = (Tr/2.0) - sqrt(r)*cos(0.5*arg);
@@ -113,21 +114,33 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 		eigvecs[3].imag = eigvals[1].imag-M[0].imag;
 	}
 	
-	
+	/*
 	//Normalise
-//	norm_fact = sqrt(pow(mag(eigvecs[0]),(double)2.0) + pow(mag(eigvecs[2]),(double)2.0));// normalisation factor	
 	norm_fact = sqrt(mag(eigvecs[0])*mag(eigvecs[0]) + mag(eigvecs[2])*mag(eigvecs[2]));
 	eigvecs[0].real = eigvecs[0].real / norm_fact;
 	eigvecs[0].imag = eigvecs[0].imag / norm_fact;
 	eigvecs[2].real = eigvecs[2].real / norm_fact;
 	eigvecs[2].imag = eigvecs[2].imag / norm_fact;
 	
-//	norm_fact = sqrt(pow(mag(eigvecs[1]),(double)2.0) + pow(mag(eigvecs[3]),(double)2.0));// normalisation factor	
 	norm_fact = sqrt(mag(eigvecs[1])*mag(eigvecs[1]) + mag(eigvecs[3])*mag(eigvecs[3]));
 	eigvecs[1].real = eigvecs[1].real / norm_fact;
 	eigvecs[1].imag = eigvecs[1].imag / norm_fact;
 	eigvecs[3].real = eigvecs[3].real / norm_fact;
 	eigvecs[3].imag = eigvecs[3].imag / norm_fact;
+	*/
+	
+	//Normalise - may not be as accurate as the above method
+	norm_fact = mag(eigvecs[0])*mag(eigvecs[0]) + mag(eigvecs[2])*mag(eigvecs[2]);
+	eigvecs[0].real = eigvecs[0].real * FastInvSqrt( norm_fact );
+	eigvecs[0].imag = eigvecs[0].imag * FastInvSqrt( norm_fact );
+	eigvecs[2].real = eigvecs[2].real * FastInvSqrt( norm_fact );
+	eigvecs[2].imag = eigvecs[2].imag * FastInvSqrt( norm_fact );
+	
+	norm_fact = mag(eigvecs[1])*mag(eigvecs[1]) + mag(eigvecs[3])*mag(eigvecs[3]);
+	eigvecs[1].real = eigvecs[1].real * FastInvSqrt( norm_fact );
+	eigvecs[1].imag = eigvecs[1].imag * FastInvSqrt( norm_fact );
+	eigvecs[3].real = eigvecs[3].real * FastInvSqrt( norm_fact );
+	eigvecs[3].imag = eigvecs[3].imag * FastInvSqrt( norm_fact );
 }
 float mag(COMPLEX x)
 {

@@ -2,7 +2,7 @@
 #define IVA_H_
 #include "definitions.h"
 
-extern COMPLEX S[N2 * 2 * TIME_BLOCKS_50PC];
+extern COMPLEX S[N * 2 * TIME_BLOCKS];
 void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq);
 
 //extern COMPLEX S[N2 * 2 * TIME_BLOCKS_50PC]; // Estimated sources variable

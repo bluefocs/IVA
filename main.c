@@ -68,8 +68,8 @@ COMPLEX *Xstart_ptr;
 
 
 // IVA variables - placed here so that the code works
-COMPLEX Q[N2*4];// 2*2 matrix at each freq bin
-COMPLEX Wp[N2*4];
+COMPLEX Q[N*4];// 2*2 matrix at each freq bin
+COMPLEX Wp[N*4];
 #pragma DATA_SECTION(X,".EXT_RAM")
 #pragma DATA_SECTION(Q,".EXT_RAM")
 #pragma DATA_SECTION(Wp,".EXT_RAM")
@@ -115,7 +115,6 @@ void main(void)
 	unsigned short n=0,m=0,k=0; // k is the freqency bin index
 	complexpair *w_ptr = (complexpair*)w;
 	complexpair buffer1[N],buffer2[N];	// Buffers for the FFTs of length 1024
-	//float r,theta;
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
 
 	
@@ -171,7 +170,8 @@ void main(void)
 	
 	// 'Offline' STFT goes here
 	//for(n=0; n<N*(TIME_BLOCKS-1); n+=N2)// N2 is half of N
-	for(n=0; n<(N2*TIME_BLOCKS_50PC); n+=N2)// N2 is half of N
+	//for(n=0; n<(N2*TIME_BLOCKS_50PC); n+=N2)// N2 is half of N
+	for(n=0; n<(N*TIME_BLOCKS); n+=N) // No overlapping 
 	{	
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
 		for(k=0;k<N;k++)
@@ -189,8 +189,10 @@ void main(void)
 		jack_fft(&buffer2->cart, N, &w_ptr->cart);// for CH2
 		
 		// Then copy 512 freq domain points back - i.e. store the first half of the FFT
-		memcpy(&X[CH1 + n], &buffer1, N2*sizeof(complexpair)); 
-		memcpy(&X[CH2 + n], &buffer2, N2*sizeof(complexpair)); 
+		//memcpy(&X[CH1 + n], &buffer1, N2*sizeof(complexpair)); 
+		//memcpy(&X[CH2 + n], &buffer2, N2*sizeof(complexpair)); 
+		memcpy(&X[CH1 + n], &buffer1, N*sizeof(complexpair)); 
+		memcpy(&X[CH2 + n], &buffer2, N*sizeof(complexpair)); 
 	}
 	
 	/*// Old non-overlapping way of doing the STFT
@@ -203,7 +205,7 @@ void main(void)
 	
 	
 	/* PCA STARTS HERE - 2*2 case only*/
-	for(k=0;k<N2;k++)// Loop around half the number of frequency bins
+	for(k=0;k<N;k++)// Loop around half the number of frequency bins
 	{
 		D[0] = 0.0;
 		D[1] = 0.0;
@@ -226,9 +228,9 @@ void main(void)
 		mean2.imag = 0.0;
 		
 		// Find the mean value for both channels - in addition check for NaNs
-		for(m=0;m<TIME_BLOCKS_50PC;m++)
+		for(m=0; m<TIME_BLOCKS; m++)
 		{
-			index = N2*m + k;
+			index = N*m + k;
 			
 			//Comparisons involving NaN ALWAYS return FALSE, so invert by using != to check for NaNs
 			if(X[CH1 + index].cart.real != X[CH1 + index].cart.real)
@@ -259,10 +261,10 @@ void main(void)
 		//	mean2.imag += (X2_ptr + N2*m + k)->cart->imag;
 		
 		}
-		mean2.real = mean2.real/(float)TIME_BLOCKS_50PC; 
-		mean2.imag = mean2.imag/(float)TIME_BLOCKS_50PC; 
-		mean1.real = mean1.real/(float)TIME_BLOCKS_50PC; 
-		mean1.imag = mean1.imag/(float)TIME_BLOCKS_50PC; 
+		mean2.real = mean2.real/(float)TIME_BLOCKS; 
+		mean2.imag = mean2.imag/(float)TIME_BLOCKS; 
+		mean1.real = mean1.real/(float)TIME_BLOCKS; 
+		mean1.imag = mean1.imag/(float)TIME_BLOCKS; 
 	
 		// Initialise covariance matrix for the current frequency bin
 		Rxx[0][0].real = 0.0;
@@ -285,16 +287,17 @@ void main(void)
 		
 		
 		// Calculate covariance matrix
-		for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
+		for(m=0;m<TIME_BLOCKS;m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
+			index = N*m + k;
 			temp[0].real = 0.0;
 			temp[0].imag = 0.0;
 			temp[1].real = 0.0;
 			temp[1].imag = 0.0;
-			temp[0].real = X[CH1 + N2*m + k].cart.real - mean1.real; // N2 as half the FFT data is thrown away (and the num of time blocks has doubled)
-			temp[0].imag = X[CH1 + N2*m + k].cart.imag - mean1.imag;
-			temp[1].real = X[CH2 + N2*m + k].cart.real - mean2.real;
-			temp[1].imag = X[CH2 + N2*m + k].cart.imag - mean2.imag;
+			temp[0].real = X[CH1 + index].cart.real - mean1.real; // N2 as half the FFT data is thrown away (and the num of time blocks has doubled)
+			temp[0].imag = X[CH1 + index].cart.imag - mean1.imag;
+			temp[1].real = X[CH2 + index].cart.real - mean2.real;
+			temp[1].imag = X[CH2 + index].cart.imag - mean2.imag;
 			
 			dbl_conver = cmplx_mult(temp[0], conj(temp[0]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][0].real += (double)dbl_conver.real;
@@ -310,12 +313,12 @@ void main(void)
 			Rxx_dbl[1][1].imag += (double)dbl_conver.imag;
 		}
 			
-		Rxx[0][0].real = (float)(Rxx_dbl[0][0].real / (float)TIME_BLOCKS_50PC);	
-		Rxx[0][0].imag = (float)(Rxx_dbl[0][0].imag / (float)TIME_BLOCKS_50PC);	
-		Rxx[0][1].real = (float)(Rxx_dbl[0][1].real / (float)TIME_BLOCKS_50PC);
-		Rxx[0][1].imag = (float)(Rxx_dbl[0][1].imag / (float)TIME_BLOCKS_50PC);	
-		Rxx[1][1].real = (float)(Rxx_dbl[1][1].real / (float)TIME_BLOCKS_50PC);
-		Rxx[1][1].imag = (float)(Rxx_dbl[1][1].imag / (float)TIME_BLOCKS_50PC);	
+		Rxx[0][0].real = (float)(Rxx_dbl[0][0].real / (float)TIME_BLOCKS);	
+		Rxx[0][0].imag = (float)(Rxx_dbl[0][0].imag / (float)TIME_BLOCKS);	
+		Rxx[0][1].real = (float)(Rxx_dbl[0][1].real / (float)TIME_BLOCKS);
+		Rxx[0][1].imag = (float)(Rxx_dbl[0][1].imag / (float)TIME_BLOCKS);	
+		Rxx[1][1].real = (float)(Rxx_dbl[1][1].real / (float)TIME_BLOCKS);
+		Rxx[1][1].imag = (float)(Rxx_dbl[1][1].imag / (float)TIME_BLOCKS);	
 	
 	
 	
@@ -385,23 +388,25 @@ void main(void)
 			
 			
 		// Remove mean from X - mean values are worked out 
-		for(m=0; m<TIME_BLOCKS_50PC; m++)// 2 by many matrix multiplied by many by 2 matrix
+		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
-			X[CH1 + N2*m + k].cart.real -= mean1.real;
-			X[CH1 + N2*m + k].cart.imag -= mean1.imag;
-			X[CH2 + N2*m + k].cart.real -= mean2.real;
-			X[CH2 + N2*m + k].cart.imag -= mean2.imag;
+			index = N*m + k;
+			X[CH1 + index].cart.real -= mean1.real;
+			X[CH1 + index].cart.imag -= mean1.imag;
+			X[CH2 + index].cart.real -= mean2.real;
+			X[CH2 + index].cart.imag -= mean2.imag;
 		}	
 		
 		
 		// Xp(:,:,k) = Q(:,:,k)*(X(:,:,k)-Xmean); <- MATLAB code for the following loop		
-		for(m=0;m<TIME_BLOCKS_50PC;m++)// 2 by many matrix multiplied by many by 2 matrix
+		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
-			temp[0] = cmplx_add(cmplx_mult(Q[4*k + 0],X[CH1 + N2*m + k].cart), cmplx_mult(Q[4*k + 1],X[CH2 + N2*m + k].cart));
-			temp[1] = cmplx_add(cmplx_mult(Q[4*k + 2],X[CH1 + N2*m + k].cart), cmplx_mult(Q[4*k + 3],X[CH2 + N2*m + k].cart));
+			index = N*m + k;
+			temp[0] = cmplx_add(cmplx_mult(Q[4*k + 0],X[CH1 + index].cart), cmplx_mult(Q[4*k + 1],X[CH2 + index].cart));
+			temp[1] = cmplx_add(cmplx_mult(Q[4*k + 2],X[CH1 + index].cart), cmplx_mult(Q[4*k + 3],X[CH2 + index].cart));
 			
-			X[CH1 + N2*m + k].cart = temp[0]; 
-			X[CH2 + N2*m + k].cart = temp[1];
+			X[CH1 + index].cart = temp[0]; 
+			X[CH2 + index].cart = temp[1];
 		}
 	
 		Wp[4*k + 0].real = 1;// Intialise unmixing matrix at each frequency bin 
@@ -416,14 +421,13 @@ void main(void)
 	
 	DSK6713_LED_on(3);	
 	
-	iva(&Xstart_ptr[0], Wp, N2);// IVA algorithm in a separate function
+	iva(&Xstart_ptr[0], Wp, N);// IVA algorithm in a separate function
 
 	// Now convert Wp to the actual unmixing matrix W (unwhitening stage?)
-	for(k=0;k<N2;k++)
+	for(k=0;k<N;k++)
 	{
 		W_temp[0] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 0]), cmplx_mult(Wp[4*k + 1], Q[4*k + 2]));// Intialise unmixing matrix at each frequency bin 
-		W_temp[1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));
-		
+		W_temp[1] = cmplx_add(cmplx_mult(Wp[4*k + 0], Q[4*k + 1]), cmplx_mult(Wp[4*k + 1], Q[4*k + 3]));		
 		W_temp[2] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 0]), cmplx_mult(Wp[4*k + 3], Q[4*k + 2]));
 		W_temp[3] = cmplx_add(cmplx_mult(Wp[4*k + 2], Q[4*k + 1]), cmplx_mult(Wp[4*k + 3], Q[4*k + 3]));		
 		
