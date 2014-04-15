@@ -18,6 +18,12 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
 	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
 	
+	// Initialise Ssq
+	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
+	{
+		Ssq[m]=0.0;
+	}
+	
 	for(iter=0;iter<maxiter;iter++)
 	{
 		dlw = 0;
@@ -41,8 +47,8 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			{
 				i = N*m + k;
 
-				Ssq[ m ] += mag(S[CH1 + i]) * mag(S[CH1 + i]);			//pow(mag(S[CH1 + i]), 2.0);
-				Ssq[TIME_BLOCKS+m] += mag(S[CH2 + i])*mag(S[CH2 + i]);//pow(mag(S[CH2 + i]), 2.0);
+				Ssq[ m ] += ((mag(S[CH1 + i])) * (mag(S[CH1 + i])));			//pow(mag(S[CH1 + i]), 2.0);
+				Ssq[TIME_BLOCKS+m] += ((mag(S[CH2 + i])) * (mag(S[CH2 + i])));//pow(mag(S[CH2 + i]), 2.0);
 				// Use TI's optimised fastmath library
 				//Ssq[ m ] += powsp(mag(S[CH1 + N2*m + k]),2.0);
 				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
