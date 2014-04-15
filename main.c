@@ -61,14 +61,14 @@ Uint16 inputsource=DSK6713_AIC23_INPUT_LINE; // select input source
 
 
 union complexdata X[NSOURCES*STFT_SIZE];// Used to store time data, freq domain data and whitened data
-float x[NSOURCES * TIME_BLOCKS_INT * N];
+float x[NSOURCES * TIME_BLOCKS_INT * N_INT];
 unsigned short buffercount = 0;            //number of new input samples in buffer 
 static unsigned short t = 0;
 complexpair *X_ptr[TIME_BLOCKS];
 COMPLEX *Xstart_ptr;
 
 // Buffers for the FFT
-complexpair buffer1[N],buffer2[N];	// Buffers for the FFTs of length 1024
+complexpair buffer1[N_INT],buffer2[N_INT];	// Buffers for the FFTs of length 1024
 
 // IVA variables - placed here so that the code works
 COMPLEX Q[N*4];// 2*2 matrix at each freq bin
@@ -102,11 +102,12 @@ interrupt void c_int11(void)      //ISR
 		//X[CH1 + (t*N) + buffercount].numbers[IMAG] = 0.0;
 		//X[CH2 + (t*N) + buffercount].numbers[REAL] = (float)outdata.channel[RIGHT];// * hamming[buffercount];//(outdata.channel[LEFT]);
 		//X[CH2 + (t*N) + buffercount++].numbers[IMAG] = 0.0;
-		x[CH1_T + (t*N) + buffercount] = (float)outdata.channel[RIGHT];// Save time domain signal in its own buffer
-		x[CH2_T + (t*N) + buffercount++] = (float)outdata.channel[LEFT];
+
+		x[CH1_T + (t*N_INT) + buffercount] = (float)outdata.channel[RIGHT];
+		x[CH2_T + (t*N_INT) + buffercount++] = (float)outdata.channel[LEFT];
 	}
 	
-	if (buffercount >= N)
+	if (buffercount >= N_INT)
 	{
 		buffercount = 0;
     	//bufferfull = 1;
@@ -117,8 +118,8 @@ interrupt void c_int11(void)      //ISR
      
 void main(void)
 {	
-	unsigned int index=0, n=0;
-	unsigned short m=0,k=0; // k is the freqency bin index
+	unsigned int index=0, n=0, m=0;
+	unsigned short k=0; // k is the freqency bin index
 	complexpair *w_ptr = (complexpair*)w;	
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
 
@@ -152,12 +153,14 @@ void main(void)
 	while(t<TIME_BLOCKS_INT);// Input data loop
 	
 	
-	
-	// 'Offline' STFT here
-	for(n=0; n<((N*TIME_BLOCKS_INT)-(N/2)); n+=(N/2)) // N/2 for 50% overlapping 
+
+	m=0; // Don't think this a problem using m here?
+	// 'Offline' STFT goes here
+	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=(N_INT/2)) // N/2 for 50% overlapping 
 	{	
+		
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
-		for(k=0;k<N;k++)
+		for(k=0;k<N_INT;k++)
 		{
 
 			buffer1[k].cart.real = hamming[k] * x[CH1_T + n+k];
@@ -168,12 +171,13 @@ void main(void)
 		// BUT! memcpy seems to be more efficient - this way you can't use the window
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
-		// Perform FFT on current buffers
-		jack_fft(&buffer1->cart, N, &w_ptr->cart);
-		jack_fft(&buffer2->cart, N, &w_ptr->cart);
+		// Calculate 1024 point FFT on current buffers
+		jack_fft(&buffer1->cart, N_INT, &w_ptr->cart);
+		jack_fft(&buffer2->cart, N_INT, &w_ptr->cart);
 		
-		memcpy(&X[CH1 + n*2].cart, &buffer1[0].cart, N*sizeof(complexpair)); 
-		memcpy(&X[CH2 + n*2].cart, &buffer2[0].cart, N*sizeof(complexpair));
+		memcpy(&X[CH1 + n + m].cart, &buffer1[0].cart, N*sizeof(complexpair)); 
+		memcpy(&X[CH2 + n + m].cart, &buffer2[0].cart, N*sizeof(complexpair));
+		m++;
 	}
 	
 	DSK6713_LED_on(1);

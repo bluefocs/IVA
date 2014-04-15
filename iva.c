@@ -8,7 +8,8 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 {
 	const float recip_TIME_BLOCKS = 1.0 / (float)TIME_BLOCKS;
 	unsigned short k=0, m=0, i=0;
-	unsigned short maxiter=1000, iter=0;
+
+	unsigned short maxiter=500, iter=0;
 	float mu=0.1;
 	COMPLEX detWp;
 	float Ssq[TIME_BLOCKS * NSOURCES];
@@ -39,12 +40,12 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			for(k=0;k<nfreq;k++)
 			{
 				i = N*m + k;
-				Ssq[ m ] += (mag(S[CH1 + i]))*(mag(S[CH1 + i]));			// pow(mag(S[CH1 + i]), 2.0);
-				Ssq[TIME_BLOCKS+m] += (mag(S[CH2 + i]))*(mag(S[CH2 + i]));	// pow(mag(S[CH2 + i]), 2.0);
-				// Use TI's optimised fastmath library - not a good idea at the moment
+
+				Ssq[ m ] += mag(S[CH1 + i]) * mag(S[CH1 + i]);			//pow(mag(S[CH1 + i]), 2.0);
+				Ssq[TIME_BLOCKS+m] += mag(S[CH2 + i])*mag(S[CH2 + i]);//pow(mag(S[CH2 + i]), 2.0);
+				// Use TI's optimised fastmath library
 				//Ssq[ m ] += powsp(mag(S[CH1 + N2*m + k]),2.0);
 				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
-				
 			}
 			
 			
@@ -59,9 +60,9 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			// Does the inversion work in this loop? 
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
 			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
-			
 		}
 		
+
 		/*
 		// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
 		for(m=0;m<TIME_BLOCKS;m++) // Take the summnation of 
@@ -70,6 +71,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
 		}
 		*/
+
 		
 
 		for(k=0;k<nfreq;k++)
