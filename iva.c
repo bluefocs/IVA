@@ -2,12 +2,13 @@
 #include "definitions.h"
 #include "additional_math.h"
 
-COMPLEX S[N * 2 * TIME_BLOCKS]; //
+COMPLEX S[N * NSOURCES * TIME_BLOCKS]; //
 #pragma DATA_SECTION(S,".EXT_RAM")
 void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 {
+	const float recip_TIME_BLOCKS = 1.0 / (float)TIME_BLOCKS;
 	unsigned short k=0, m=0, i=0;
-	unsigned short maxiter=100, iter=0;
+	unsigned short maxiter=1000, iter=0;
 	float mu=0.1;
 	COMPLEX detWp;
 	float Ssq[TIME_BLOCKS * NSOURCES];
@@ -38,28 +39,37 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			for(k=0;k<nfreq;k++)
 			{
 				i = N*m + k;
-				Ssq[ m ] += pow(mag(S[CH1 + i]), 2.0);
-				Ssq[TIME_BLOCKS+m] += pow(mag(S[CH2 + i]), 2.0);
-				// Use TI's optimised fastmath library
+				Ssq[ m ] += (mag(S[CH1 + i]))*(mag(S[CH1 + i]));			// pow(mag(S[CH1 + i]), 2.0);
+				Ssq[TIME_BLOCKS+m] += (mag(S[CH2 + i]))*(mag(S[CH2 + i]));	// pow(mag(S[CH2 + i]), 2.0);
+				// Use TI's optimised fastmath library - not a good idea at the moment
 				//Ssq[ m ] += powsp(mag(S[CH1 + N2*m + k]),2.0);
 				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
 				
 			}
 			
+			
+			// The 5 lines below can be sped up by using the fast inverse sqrt function
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
 			
 			// Calculate the sum of all the values in Ssq before the inverse is taken, this is used in the break condition below
 			SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS+m];
+			
+			// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
+			// Does the inversion work in this loop? 
+			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
+			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
+			
 		}
 		
+		/*
 		// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
 		for(m=0;m<TIME_BLOCKS;m++) // Take the summnation of 
 		{
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
 			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
 		}
-		
+		*/
 		
 
 		for(k=0;k<nfreq;k++)
@@ -102,14 +112,14 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			}
 			
 			
-			W_temp[0].real = 1.0 - (W_temp[0].real / (float)TIME_BLOCKS);
-			W_temp[0].imag = 0.0 - (W_temp[0].imag / (float)TIME_BLOCKS);
-			W_temp[1].real = 0.0 - (W_temp[1].real / (float)TIME_BLOCKS);
-			W_temp[1].imag = 0.0 - (W_temp[1].imag / (float)TIME_BLOCKS);
-			W_temp[2].real = 0.0 - (W_temp[2].real / (float)TIME_BLOCKS);
-			W_temp[2].imag = 0.0 - (W_temp[2].imag / (float)TIME_BLOCKS);
-			W_temp[3].real = 1.0 - (W_temp[3].real / (float)TIME_BLOCKS);
-			W_temp[3].imag = 0.0 - (W_temp[3].imag / (float)TIME_BLOCKS);
+			W_temp[0].real = 1.0 - (W_temp[0].real * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[0].imag = 0.0 - (W_temp[0].imag * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[1].real = 0.0 - (W_temp[1].real * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[1].imag = 0.0 - (W_temp[1].imag * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[2].real = 0.0 - (W_temp[2].real * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[2].imag = 0.0 - (W_temp[2].imag * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[3].real = 1.0 - (W_temp[3].real * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
+			W_temp[3].imag = 0.0 - (W_temp[3].imag * recip_TIME_BLOCKS);// / (float)TIME_BLOCKS);
 			
 			
 			// 2 by many matrix multiplied by many by 2 matrix

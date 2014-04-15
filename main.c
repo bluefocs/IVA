@@ -2,28 +2,28 @@
  * main.c - written by Jack Harris Feburary-March-April 2014, Loughborough, UK.
  * 
  * 
- * Interrupt - continuous 'feedthrough' audio system continuously taking audio data
- * from the line in and outputting it to the headphones.
  * 
- * LED 1) Reads in approx 5 seconds of audio data.
- * LED 2) Indicates 1024 point FFT / STFT is in progress with 50% overlapping and 
- * 			optional windowing (see note).
- * LED 3) PCA in progress.
- * LED 4) PCA is complete. Though feedthrough audio continues via the interrupt. IVA 
- * 			in progress 
+ * LED 1) Reads in approx 5 seconds of audio data in progress.
+ * LED 2) Indicates 1024 point FFT / STFT is complete with 50% overlapping with hanning 
+ * 			window (see note).
+ * LED 3) PCA complete.
+ * LED 4) IVA complete. Though feedthrough audio continues via the interrupt.
+ * 
+ * Interrupt - continuous 'feedthrough' audio system continuously sampling audio data
+ * from the line in and outputting it to the headphones.
  * 
  * Twiddle values for the FFT are generated in MATLAB (generate_twiddles.m) due to 
  * previous problems with the cos (cosine) function with the TI toolchain.
  * 
- * The STFT works by first assuming no overlap, the overlap is created by calculating 
- * each FFT in turn, but only writting the first half of the transformed signal back to 
- * memory (as the FFT of a real signal is symmetrical), then advancing half the FFT size
- * (in this case 1024/2), and repe
- * ating process to obtain the FFTs 'inbetween' the 
- * nonoverlapped FFTs.
+ * The STFT is of length 1024 and uses a hamming window (the values have been precalculated
+ * and placed in hamming.h). The memory works by placing the time domain signal in memory 
+ * space of 40*1024 (as if there were going to be 40 non-overlapping frequency bins), but 
+ * places the result of the STFT in memory space 79*1024, the increase in blocks is due to 
+ * the 50% overlap. 
  * 
  * The PCA and whitening has been fully debugged. Returns identity matrix when two 
- * corresponding frequency bins are compared (i.e. they are uncorrelated).
+ * corresponding frequency bins are compared with the cov() function in MATLAB
+ * (i.e. they are uncorrelated).
  * 
  * IVA has been been debugged. This has been verified with the output of the IVA 
  * algorithm in MATLAB (provided by Taesu Kim). The exit clause needs to be investigated,
@@ -32,7 +32,8 @@
  * The program can suffer from NaN propogating through each stage, this is POSSIBLY 
  * caused by the FFT code from Chassaing's book and dealing with large input values, 
  * in future versions scaling needs to be considered. Possibly turn down the volume 
- * of whatever is driving the audio in. 
+ * of whatever is driving the audio in. This has been potential solved on 14-4-2014 by 
+ * changing the outdata variable from unsigned to signed (!)
  * 
  * Losely based on the original file in Rulph Chassaing's TMS320C6713 DSK book:
  * frames.c - basic illustration of triple-buffered
@@ -41,7 +42,8 @@
  * TO DO LIST:
  *  - Inverse STFT still needs to be implemented.
  *  - (Possibly) expand frequency bins from 512 to 1024 (don't throw away half the 
- * 		frequency bins to speed up processing)
+ * 		frequency bins to speed up processing) - completed 14-4-2014
+ * 	- Implement a complex multiply function in assembley.
  * 
  */
 #include "dsk6713.h"
@@ -100,7 +102,7 @@ interrupt void c_int11(void)      //ISR
 		//X[CH1 + (t*N) + buffercount].numbers[IMAG] = 0.0;
 		//X[CH2 + (t*N) + buffercount].numbers[REAL] = (float)outdata.channel[RIGHT];// * hamming[buffercount];//(outdata.channel[LEFT]);
 		//X[CH2 + (t*N) + buffercount++].numbers[IMAG] = 0.0;
-		x[CH1_T + (t*N) + buffercount] = (float)outdata.channel[RIGHT];
+		x[CH1_T + (t*N) + buffercount] = (float)outdata.channel[RIGHT];// Save time domain signal in its own buffer
 		x[CH2_T + (t*N) + buffercount++] = (float)outdata.channel[LEFT];
 	}
 	
@@ -149,14 +151,9 @@ void main(void)
 	
 	while(t<TIME_BLOCKS_INT);// Input data loop
 	
-		
-	DSK6713_LED_on(1);
 	
 	
-	
-	// 'Offline' STFT goes here
-	//for(n=0; n<N*(TIME_BLOCKS-1); n+=N2)// N2 is half of N
-	//for(n=0; n<(N2*TIME_BLOCKS_50PC); n+=N2)// N2 is half of N
+	// 'Offline' STFT here
 	for(n=0; n<((N*TIME_BLOCKS_INT)-(N/2)); n+=(N/2)) // N/2 for 50% overlapping 
 	{	
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
@@ -172,7 +169,6 @@ void main(void)
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
 		// Perform FFT on current buffers
-		
 		jack_fft(&buffer1->cart, N, &w_ptr->cart);
 		jack_fft(&buffer2->cart, N, &w_ptr->cart);
 		
@@ -180,16 +176,8 @@ void main(void)
 		memcpy(&X[CH2 + n*2].cart, &buffer2[0].cart, N*sizeof(complexpair));
 	}
 	
-	
-	
-	
-	/*// Old non-overlapping way of doing the STFT
-	for(n=0;n<(TIME_BLOCKS-1);n++)
-	{
-		//fft(&X_ptr[n]->cart, N, &w_ptr->cart); // use 'n' as the time block index, so it doesn't clash with t
-		jack_fft(&X_ptr[n]->cart, N, &w_ptr->cart);
-	}*/
-	DSK6713_LED_on(2);	
+	DSK6713_LED_on(1);
+		
 	
 	
 	/* PCA STARTS HERE - 2*2 case only*/
@@ -406,8 +394,8 @@ void main(void)
 		Wp[4*k + 3].real = 1;
 		Wp[4*k + 3].imag = 0;	
 	}
-	
-	DSK6713_LED_on(3);	
+	DSK6713_LED_on(2);
+		
 	
 	iva(&Xstart_ptr[0], Wp, N);// IVA algorithm in a separate function
 
@@ -426,6 +414,7 @@ void main(void)
 		Wp[4*k + 1] = cmplx_mult(W_inv[0], W_temp[1]); 
 		Wp[4*k + 2] = cmplx_mult(W_inv[1], W_temp[2]); 
 		Wp[4*k + 3] = cmplx_mult(W_inv[1], W_temp[3]); 
-	}			
+	}	
+	DSK6713_LED_on(3);		
 	while(1);
 }                                 //end of main()
