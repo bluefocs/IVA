@@ -1,5 +1,15 @@
 #include "additional_math.h"
 
+float FastInv4over3(float x) 
+{
+	//float xhalf = 0.5f * x;
+	int i = *(int*)&x;
+	i = 0x941D3679 - (1.333f * i);
+	x = *(float*)&i;
+	//x = x*(1.5f-(xhalf*x*x)); // Can't do Newton-Raphson with 4/3 as defeats point of the algorithm
+	return x;
+}
+
 float FastInvSqrt(float x) 
 {
 	float xhalf = 0.5f * x;

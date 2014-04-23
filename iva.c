@@ -55,6 +55,11 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			}
 			
 			
+			Ssq[ m ] = FastInvSqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
+			Ssq[TIME_BLOCKS+m] = FastInvSqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
+			
+			
+			/*
 			// The 5 lines below can be sped up by using the fast inverse sqrt function
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
@@ -66,6 +71,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			// Does the inversion work in this loop? 
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
 			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
+			*/
 		}
 		
 
@@ -154,7 +160,9 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		
 		
 		// Sum of Ssq is worked out in the loops above before the inverse is taken.	
-		//Obj = ((SumSsq/N) - dlw)/(NSOURCES*nfreq);
+		
+		
+		/*
 		Obj = (((double)SumSsq/(double)TIME_BLOCKS) - dlw)/((double)NSOURCES*(double)nfreq);
 		
 		
@@ -166,6 +174,6 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		if(comparison < tol) // Is the change in Obj divided by the current Obj lower than a tolerance?
 		{
 			break;
-		}
+		}*/
 	} 
 }

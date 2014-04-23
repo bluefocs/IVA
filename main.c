@@ -132,7 +132,8 @@ void main(void)
 	COMPLEX W_temp[4],W_inv[4];
 	float D[2]={0.0, 0.0};
 
-	
+
+  	
 	for(n=STFT_SIZE;n>STFT_SIZE-N;n--) // write zeros on the end of the buffer 
 	{									// Is this still necessary? 7-4-2013
 		X[CH1 + n].cart.real=0.0;// 
