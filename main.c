@@ -79,6 +79,12 @@ COMPLEX Wp[N*4];
 #pragma DATA_SECTION(buffer1,".EXT_RAM")
 #pragma DATA_SECTION(buffer2,".EXT_RAM")
 #pragma DATA_SECTION(x,".EXT_RAM")
+
+
+// Function prototypes for any assembly routines
+extern float cmplx_mult_sp(COMPLEX x, COMPLEX y);
+
+
 interrupt void c_int11(void)      //ISR
 {
   	union {Uint32 uint; short channel[2];} outdata;
@@ -131,8 +137,17 @@ void main(void)
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];
 	float D[2]={0.0, 0.0};
-
-
+	
+	// Test variables
+	float test = 0.0, a = 2.1, b = 1.3;
+	COMPLEX c,e;
+	e.real=0.4;
+	e.imag=0.1;
+	c.real=1.1;
+	c.imag=2.1;
+	test = cmplx_mult_sp(c, e);
+	temp[0] = cmplx_mult(c, e);
+	//test = a*b;
   	
 	for(n=STFT_SIZE;n>STFT_SIZE-N;n--) // write zeros on the end of the buffer 
 	{									// Is this still necessary? 7-4-2013

@@ -1,6 +1,7 @@
 #include "iva.h"
 #include "definitions.h"
 #include "additional_math.h"
+#include "DSPF_sp_mat_mul_cplx.h"
 
 COMPLEX S[N * NSOURCES * TIME_BLOCKS]; //
 #pragma DATA_SECTION(S,".EXT_RAM")
@@ -24,13 +25,14 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		Ssq[m]=0.0;
 	}
 	
+	#pragma MUST_ITERATE(500,500)
 	for(iter=0;iter<maxiter;iter++)
 	{
 		dlw = 0;
-		
+		#pragma MUST_ITERATE(513,513)
 		for(k=0;k<N;k++)
 		{
-			//COMPLEX_sp_mat_mul(&(Wp[4*k + 0]), nsou, nsou, &([CH1 + N2*k + m]), nblocks, &(S[k][0][0]));	
+			#pragma MUST_ITERATE(TIME_BLOCKS,TIME_BLOCKS)
 			for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
 			{
 				i = N*m + k;
@@ -38,6 +40,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 				S[CH2 + i] = cmplx_add(cmplx_mult(Wp[4*k + 2], Xp[CH1 + i]), cmplx_mult(Wp[4*k + 3], Xp[CH2 + i]));
 			}
 		}
+		
 		
 		SumSsq=0.0;
 		// Calculate score function function - derived from the multivariate Gaussian distribution function.
