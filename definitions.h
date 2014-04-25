@@ -26,7 +26,7 @@ typedef union complexdata
 #define DSK6713_AIC23_INPUT_MIC 0x0015
 #define DSK6713_AIC23_INPUT_LINE 0x0011
 #define N 513	// Number of frequency bins that the processing will be done across (N_INT/2) +1
-#define N_INT 1024 // Original FFT length
+#define N_INT 1024 // Original FFT length, INT = initial
 #define STFT_SIZE 40527 // 513*79
 #define TIME_BLOCKS 79 // Actual no. of time blocks
 #define TIME_BLOCKS_INT 40// Initial number of time blocks (no overlapping)

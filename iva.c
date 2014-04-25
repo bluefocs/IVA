@@ -12,12 +12,12 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 
 	unsigned short maxiter=500, iter=0;
 	float mu=0.1;
-	COMPLEX detWp;
+//	COMPLEX detWp;
 	float Ssq[TIME_BLOCKS * NSOURCES];
-	double epsilon = 0.00001;
+//	double epsilon = 0.00001;
 	COMPLEX W_temp[4], W_new[4];//, detWp;	
 	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
-	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
+//	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
 	
 	// Initialise Ssq
 	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
@@ -28,7 +28,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	#pragma MUST_ITERATE(500,500)
 	for(iter=0;iter<maxiter;iter++)
 	{
-		dlw = 0;
+		//dlw = 0;// Used for cost function value
 		#pragma MUST_ITERATE(513,513)
 		for(k=0;k<N;k++)
 		{
@@ -42,7 +42,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		}
 		
 		
-		SumSsq=0.0;
+//		SumSsq=0.0;// Used for cost function value
 		// Calculate score function function - derived from the multivariate Gaussian distribution function.
 		for(m=0;m<TIME_BLOCKS;m++) // Summnation loop - Can this be sped up ? and be done with double precision?
 		{
@@ -147,8 +147,8 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			
 			
 			
-			detWp = cmplx_minus(cmplx_mult(Wp[4*k + 0], Wp[4*k + 3]), cmplx_mult(Wp[4*k + 2], Wp[4*k + 3]));  // Determinate of Wp			
-			dlw = dlw + (double)log(mag(detWp) + epsilon);//mag replaces the abs function
+		//	detWp = cmplx_minus(cmplx_mult(Wp[4*k + 0], Wp[4*k + 3]), cmplx_mult(Wp[4*k + 2], Wp[4*k + 3]));  // Determinate of Wp			
+		//	dlw = dlw + (double)log(mag(detWp) + epsilon);//mag replaces the abs function
 			
 			// Unrolled loop - update unmixing matrix at frequency bin
 			Wp[4*k + 0].real = Wp[4*k + 0].real + (mu*W_new[0].real); //mu is the learning rate

@@ -1,0 +1,33 @@
+;					
+;	Multiplies two single precision complex numbers
+;
+;Original C code:
+; 	aminusb = (z1.real - z1.imag) * z2.imag;
+;	// Uses an identity to reduce the number of multiplications
+;	out.real = z1.real*(z2.real - z2.imag) + aminusb;
+;	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;					
+;										
+					.def	_cmplx_mult_sp;
+_cmplx_mult_sp:		.cproc 	a_0,b_0
+					.reg 	a,b,c,d,aminusb,res_r,res_i
+					LDW *a_0++,a			;Load variables from structure
+					LDW *a_0++,b			;
+					SUBSP a,b,aminusb		;
+					NOP 3
+					LDW *b_0++,c			;
+					LDW *b_0++,d			;
+					;NOP 3
+					MPYSP aminusb,d,aminusb	;
+					NOP 3
+					SUBSP c,d,res_r					;
+					MPYSP res_r,a,res_r				;
+					NOP 3
+					ADDSP c,d,res_i	
+					MPYSP res_i,b,res_i	
+					NOP 3
+					ADDSP res_i,aminusb,res_i		;
+					ADDSP res_r,aminusb,res_r		;
+					
+										
+					.return res_r
+					.endproc			

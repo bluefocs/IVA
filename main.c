@@ -40,10 +40,12 @@
  *  N sample frame-based processing
  * 
  * TO DO LIST:
- *  - Inverse STFT still needs to be implemented.
+ *  - Inverse STFT still needs to be implemented. - completed 25-4-2014 (further verification may be required)
  *  - (Possibly) expand frequency bins from 512 to 1024 (don't throw away half the 
  * 		frequency bins to speed up processing) - completed 14-4-2014
  * 	- Implement a complex multiply function in assembley.
+ * 	- Multiply the unmixing matrices by the estimated sources at each frequency bin.
+ *  - Need to rewrite the exit clause for the IVA algorithm (checking the cost function).
  * 
  */
 #include "dsk6713.h"
@@ -54,6 +56,8 @@
 #include "definitions.h"
 #include "twiddles.h"
 #include "hamming.h"
+#include "istft.h"
+
 
 Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;	//set sampling rate
 DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
@@ -66,6 +70,7 @@ unsigned short buffercount = 0;            //number of new input samples in buff
 static unsigned short t = 0;
 complexpair *X_ptr[TIME_BLOCKS];
 COMPLEX *Xstart_ptr;
+
 
 // Buffers for the FFT
 complexpair buffer1[N_INT],buffer2[N_INT];	// Buffers for the FFTs of length 1024
@@ -139,15 +144,16 @@ void main(void)
 	float D[2]={0.0, 0.0};
 	
 	// Test variables
-	float test = 0.0, a = 2.1, b = 1.3;
-	COMPLEX c,e;
-	e.real=0.4;
-	e.imag=0.1;
-	c.real=1.1;
-	c.imag=2.1;
-	test = cmplx_mult_sp(c, e);
-	temp[0] = cmplx_mult(c, e);
-	//test = a*b;
+	//float test = 0.0, a = 2.1, b = 1.3;
+	//COMPLEX c,e;
+	//e.real=0.4;
+	//e.imag=0.1;
+	//c.real=1.1;
+	//c.imag=2.1;
+	//test = cmplx_mult_sp(c, e);
+	//temp[0] = cmplx_mult(c, e);
+	
+	
   	
 	for(n=STFT_SIZE;n>STFT_SIZE-N;n--) // write zeros on the end of the buffer 
 	{									// Is this still necessary? 7-4-2013
@@ -415,7 +421,7 @@ void main(void)
 		Wp[4*k + 3].imag = 0;	
 	}
 	DSK6713_LED_on(2);
-		
+	
 	
 	iva(&Xstart_ptr[0], Wp, N);// IVA algorithm in a separate function
 
@@ -435,6 +441,13 @@ void main(void)
 		Wp[4*k + 2] = cmplx_mult(W_inv[1], W_temp[2]); 
 		Wp[4*k + 3] = cmplx_mult(W_inv[1], W_temp[3]); 
 	}	
-	DSK6713_LED_on(3);		
+	DSK6713_LED_on(3);	
+	
+	
+	// Unmixing filter multiplied the estimated source @ each freq needs to go here!
+	
+	istft(&Xstart_ptr[0], x, N, 40960, N);// Resynthesise the first source
+	
+		
 	while(1);
 }                                 //end of main()
