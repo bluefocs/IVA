@@ -87,7 +87,7 @@ COMPLEX Wp[N*4];
 
 
 // Function prototypes for any assembly routines
-extern float cmplx_mult_sp(COMPLEX x, COMPLEX y);
+extern COMPLEX cmplx_mult_sp(COMPLEX x, COMPLEX y, float *real, float *imag);
 
 
 interrupt void c_int11(void)      //ISR
@@ -144,14 +144,15 @@ void main(void)
 	float D[2]={0.0, 0.0};
 	
 	// Test variables
-	//float test = 0.0, a = 2.1, b = 1.3;
-	//COMPLEX c,e;
-	//e.real=0.4;
-	//e.imag=0.1;
-	//c.real=1.1;
-	//c.imag=2.1;
-	//test = cmplx_mult_sp(c, e);
-	//temp[0] = cmplx_mult(c, e);
+	float test = 0.0;//, a = 2.1, b = 1.3;
+	float test_r=0.0,test_i=0.0;
+	COMPLEX c,e;
+	e.real=0.4;
+	e.imag=0.1;
+	c.real=1.1;
+	c.imag=2.1;
+	temp[0] = cmplx_mult_sp(c, e, &test_r, &test_i);
+	temp[1] = cmplx_mult(c, e);
 	
 	
   	

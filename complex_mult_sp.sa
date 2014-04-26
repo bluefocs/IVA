@@ -8,26 +8,21 @@
 ;	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;					
 ;										
 					.def	_cmplx_mult_sp;
-_cmplx_mult_sp:		.cproc 	a_0,b_0
-					.reg 	a,b,c,d,aminusb,res_r,res_i
+_cmplx_mult_sp:		.cproc 	a_0,b_0,res_r,res_i
+					.reg 	a,b,c,d,aminusb,real,imag
 					LDW *a_0++,a			;Load variables from structure
 					LDW *a_0++,b			;
 					SUBSP a,b,aminusb		;
-					NOP 3
 					LDW *b_0++,c			;
 					LDW *b_0++,d			;
-					;NOP 3
 					MPYSP aminusb,d,aminusb	;
-					NOP 3
-					SUBSP c,d,res_r					;
-					MPYSP res_r,a,res_r				;
-					NOP 3
-					ADDSP c,d,res_i	
-					MPYSP res_i,b,res_i	
-					NOP 3
-					ADDSP res_i,aminusb,res_i		;
-					ADDSP res_r,aminusb,res_r		;
-					
-										
+					SUBSP c,d,real					;
+					MPYSP real,a,real				;
+					ADDSP c,d,imag	
+					MPYSP imag,b,imag		;
+					ADDSP real,aminusb,real		;
+					ADDSP imag,aminusb,imag
+					STW real,*res_r++
+					STW	imag,*res_i++	
 					.return res_r
 					.endproc			
