@@ -25,31 +25,32 @@ MEMORY
 
 SECTIONS
 {
-  	.vectors  	 	> IVECS	
-	.EXT_RAM	   > EMIFCE0
-	.text          >  IRAM
-	.stack         >  IRAM
-	.bss           >  IRAM
-	.cio           >  IRAM
-	.const         >  IRAM
-	.data          >  IRAM
-	.switch        >  IRAM
-	.sysmem        >  IRAM
-	.far           >  IRAM
-  .args          >  IRAM
-	.ppinfo        >  IRAM
-	.ppdata        >  IRAM
+  	.vectors:  	 	> IVECS	
+	.EXT_RAM:	   > EMIFCE0
+	.text: { } > IRAM | EMIFCE0
+	.fast_code
+	.stack:        >  IRAM
+	.bss:          >  IRAM
+	.cio:          >  IRAM
+	.const:        >  IRAM
+	.data:         >  IRAM
+	.switch:       >  IRAM
+	.sysmem:       >  IRAM
+	.far:          >  IRAM
+  	.args:         >  IRAM
+	.ppinfo:       >  IRAM
+	.ppdata:       >  IRAM
 	
   /* COFF sections */
-	.pinit         >  IRAM
-	.cinit         >  IRAM
+	.pinit:        >  IRAM
+	.cinit:        >  IRAM
 
   /* EABI sections */
-  .binit         >  IRAM
-	.init_array    >  IRAM
-  .neardata      >  IRAM
-	.fardata       >  IRAM
-	.rodata        >  IRAM
-	.c6xabi.exidx  >  IRAM
-	.c6xabi.extab  >  IRAM
+  	.binit:        >  IRAM
+	.init_array:   >  IRAM
+  	.neardata:     >  IRAM
+	.fardata:      >  IRAM
+	.rodata:       >  IRAM
+	.c6xabi.exidx: >  IRAM
+	.c6xabi.extab: >  IRAM
 }

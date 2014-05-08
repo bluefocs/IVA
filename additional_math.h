@@ -4,7 +4,11 @@
 #include "definitions.h"
 
 
-/* Function prototypes*/
+/* Function prototypes for linear assembly routines*/
+extern float mag_sqrd(COMPLEX z);
+extern COMPLEX cmplx_mult_add(COMPLEX w, COMPLEX x, COMPLEX y, COMPLEX z, float *real, float *imag);
+
+/* Function prototypes additional_math.c functions*/
 float FastInv4over3(float x);
 float FastInvSqrt(float x);
 void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs);

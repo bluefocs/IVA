@@ -39,4 +39,5 @@ typedef union complexdata
 #define CH2 40527 // This should be the same as STFT size
 #define CH1_T 0
 #define CH2_T 40960
+#define PI 3.14159265358979323846
 #endif /*DEFINITIONS_H_*/
