@@ -16,6 +16,7 @@
 #include "DSPF_sp_icfftr2_dif.h"
 #include "csl_irq.h"
 #include "DSPF_sp_bitrev_cplx.h"
+#include "freqsig.h"
 #include <math.h>
 #pragma DATA_ALIGN(buffer,8)
 float buffer[(2*N_INT) + 8];
@@ -89,16 +90,27 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	
 	gen_w_r2(w, N_INT);
 	
-	bit_rev(w, N>>1);
+	bit_rev(w, N_INT>>1);/// Offending line ???
 	
-	for(n=0; n<N_INT; n++)
-	{
-		brev[n] = 0;
-	}
+
+	/*
+	// Before the STFT a little test
+	prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		
+ 		
+ 	bit_rev(freq, N_INT);// BIT REVERSAL DEFINITELY GOES BEFORE!
+	DSPF_sp_icfftr2_dif(freq, w, N_INT);
+		
+ 		
+	IRQ_globalRestore(prevGIE);// Restore previous gloabl interrupt state
+	for(n=0; n < 2*N_INT; n++)
+ 	{
+ 		freq[n]=freq[n]/(float)N_INT;
+ 	}
+	*/ // End of test
 	
-	//bitrev_index(brev,N_INT);
-	//DSPF_sp_bitrev_cplx((double*)xtest, brev, N_INT);//N_INT=1024
-	//DSPF_sp_bitrev_cplx((double*)w, brev, N_INT); // Bit reverse twiddle factors
+	
+	
 	for(n=0;n<time_len;n+=overlap)
 	{
 		for(k=0; k<start*3; k++)//
