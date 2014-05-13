@@ -40,11 +40,14 @@
  *  N sample frame-based processing
  * 
  * TO DO LIST:
- *  - Inverse STFT still needs to be implemented. - completed 25-4-2014 (further verification may be required)
+ *  - Inverse STFT still needs to be implemented. 
+ * 				- Intial implementation completed 25-4-2014, 
+ * 				- further testing 9-5-2014 (time domain signal still 'noisy')
+ * 				- Buffer creation rewritten. 13-5-2014
  *  - (Possibly) expand frequency bins from 512 to 1024 (don't throw away half the 
  * 		frequency bins to speed up processing) - completed 14-4-2014
  * 	- Implement a complex multiply function in assembley. completed - 26-4-2014.
- * 	- Multiply the unmixing matrices by the estimated sources at each frequency bin.
+ * 	- Multiply the unmixing matrices by the estimated sources at each frequency bin. - Done 12-5-2014
  *  - Need to rewrite the exit clause for the IVA algorithm (checking the cost function).
  *  - Write FastInvSqrt function in linear assembly. 
  */
@@ -60,15 +63,16 @@
 #include <csl_cache.h>
 //#include <utility.h>
 // Inlcudes for ifft test
-#include "DSPF_sp_icfftr2_dif.h"
-#include "DSPF_sp_bitrev_cplx.h"
+//#include "DSPF_sp_icfftr2_dif.h"
+//#include "DSPF_sp_bitrev_cplx.h"
 
 Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;	//set sampling rate
 DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
 Uint16 inputsource=DSK6713_AIC23_INPUT_LINE; // select input source
 
 
-union complexdata X[NSOURCES*STFT_SIZE];// Used to store time data, freq domain data and whitened data
+union complexdata X[NSOURCES*STFT_SIZE]; // Used to store time data, freq domain data and whitened data
+union complexdata X_org[NSOURCES*STFT_SIZE]; // Original X data for to be separated at the end
 float x[NSOURCES * TIME_BLOCKS_INT * N_INT];
 float x_rec[TIME_BLOCKS_INT * N_INT];
 unsigned short buffercount = 0;            //number of new input samples in buffer 
@@ -84,6 +88,7 @@ complexpair buffer1[N_INT],buffer2[N_INT];	// Buffers for the FFTs of length 102
 COMPLEX Q[N*4];// 2*2 matrix at each freq bin
 COMPLEX Wp[N*4];
 #pragma DATA_SECTION(X,".EXT_RAM")
+#pragma DATA_SECTION(X_org,".EXT_RAM")
 #pragma DATA_SECTION(Q,".EXT_RAM")
 #pragma DATA_SECTION(Wp,".EXT_RAM")
 #pragma DATA_SECTION(buffer1,".EXT_RAM")
@@ -94,37 +99,6 @@ COMPLEX Wp[N*4];
 
 // Function prototypes for any assembly routines
 //extern COMPLEX cmplx_mult_sp(COMPLEX x, COMPLEX y, float *real, float *imag);
-
-void tw_genSPxSPfft(float * w, int n)                                      
-{                                                                  
-     int i, j, k;                                                        
-     double x_t, y_t, theta1, theta2, theta3;                         
-                                                                       
-     for (j=1, k=0; j <= n>>2; j = j<<2)                              
-     {                                                                
-         for (i=0; i < n>>2; i+=j)                                    
-         {                                                            
-             theta1 = 2*PI*i/n;                                       
-             x_t = cos(theta1);                                       
-             y_t = sin(theta1);                                       
-             w[k]   =  (float)x_t;                                    
-             w[k+1] =  (float)y_t;                                    
-                                                                      
-             theta2 = 4*PI*i/n;                                       
-             x_t = cos(theta2);                                       
-             y_t = sin(theta2);                                       
-             w[k+2] =  (float)x_t;                                    
-             w[k+3] =  (float)y_t;                                    
-                                                                      
-             theta3 = 6*PI*i/n;                                       
-             x_t = cos(theta3);                                       
-             y_t = sin(theta3);                                       
-             w[k+4] =  (float)x_t;                                    
-             w[k+5] =  (float)y_t;                                    
-             k+=6;                                                    
-         }                                                            
-     }                                                                
-}
 
 
 interrupt void c_int11(void)      //ISR
@@ -191,31 +165,7 @@ void main(void)
 	cmplx_mult_add(c, e, e, e, &test_r, &test_i);
 	temp[1] = cmplx_mult(c, e);
 	*/
-	//short brev[8];
-	unsigned int prevGIE; 
-	#pragma DATA_ALIGN(test, 8)
-	float test[32] = {0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-	#pragma DATA_ALIGN(w8, 8)
-	double w8[16]={1.0000, 0, 0.7071,0.7071,0.0000,1.0000,-0.7071,0.7071,-1.0000, 0.0000,-0.7071,-0.7071,-0.0000,-1.0000,0.7071,-0.7071};
-	float y[16];
-	#pragma DATA_ALIGN(brev,8)
-	/*short brev[64] = {
-		0x0, 0x20, 0x10, 0x30, 0x8, 0x28, 0x18, 0x38,
-		0x4, 0x24, 0x14, 0x34, 0xc, 0x2c, 0x1c, 0x3c,
-		0x2, 0x22, 0x12, 0x32, 0xa, 0x2a, 0x1a, 0x3a,
-		0x6, 0x26, 0x16, 0x36, 0xe, 0x2e, 0x1e, 0x3e,
-		0x1, 0x21, 0x11, 0x31, 0x9, 0x29, 0x19, 0x39,
-		0x5, 0x25, 0x15, 0x35, 0xd, 0x2d, 0x1d, 0x3d,
-		0x3, 0x23, 0x13, 0x33, 0xb, 0x2b, 0x1b, 0x3b,
-		0x7, 0x27, 0x17, 0x37, 0xf, 0x2f, 0x1f, 0x3f
-	};*/
-	//short brev1024[1024];
-	//short brev[8] = {0,0,0,0,0,0,0,0};
-	short brev[8] = {0,4,2,6,1,5,3,7};
-	//short brev[8] = {0,2,1,3,0,0,0,0};
-	//short brev[16] = {0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
-	//bitrev_index(&brev1024[0], 1024) ;
-	//DSPF_sp_bitrev_cplx((double*)w, &brev1024[0], 1024);
+	
 	
 	Xstart_ptr = &(X[0].cart);
 	comm_intr(); 
@@ -224,30 +174,7 @@ void main(void)
 	DSK6713_LED_off(1);
 	DSK6713_LED_off(2);
 	DSK6713_LED_off(3);	
-	
-	/*
-	CACHE_enableCaching(CACHE_CE00);
-  	CACHE_setL2Mode(CACHE_64KCACHE);
-	
-	// Invalidate L1D, L1P, and L2 cache    
-    CACHE_wbInvL1d((void *)0x0, 65536, CACHE_WAIT);
-    CACHE_invAllL1p();
-    CACHE_wbInvAllL2(CACHE_WAIT);    
-	
-
-
-	tw_genSPxSPfft(&w8[0], 8);
-	
-	bitrev_index(brev,8);
-	prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		
-		// Bit reverse  frequency domain data
-	//DSPF_sp_bitrev_cplx((double*)test, brev, 8);//N_INT=1024
- 	DSPF_sp_ifftSPxSP(8, &test[0], &w8[0], y, brev, 2, 0, 8);
-	IRQ_globalRestore(prevGIE);
-  	*/
-  	
-  	
+	 	
   	
   	
 	for(n=STFT_SIZE;n>STFT_SIZE-N;n--) // write zeros on the end of the buffer 
@@ -264,6 +191,7 @@ void main(void)
 	
 	
 
+	
 	m=0; // Don't think this a problem using m here?
 	// 'Offline' STFT goes here
 	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=(N_INT/2)) // N/2 for 50% overlapping 
@@ -290,9 +218,10 @@ void main(void)
 		m++;
 	}
 	
+	
+	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 		
-	
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
@@ -509,11 +438,11 @@ void main(void)
 		Wp[4*k + 3].imag = 0;	
 	}
 	DSK6713_LED_on(2);
-	istft(&Xstart_ptr[0], x_rec, N, 40960, N);// Resynthesise the first source
+	//istft(&Xstart_ptr[0], x_rec, N, 40960, N);// Resynthesise the first mixture to test istft
 	
 	iva(&Xstart_ptr[0], Wp, N);// IVA algorithm in a separate function
 
-	// Now convert Wp to the actual unmixing matrix W (unwhitening stage)
+	// Now convert Wp to the actual unmixing matrix W (correct scaling of unmixing filter coefficients)
 	for(k=0;k<N;k++)
 	{
 		index=4*k;
@@ -534,7 +463,7 @@ void main(void)
 	
 	
 	// Now recover original sources in the frequency by multiplying by the inverse of the whitening matrix
-	for(k=0;k<N;k++)
+/*	for(k=0;k<N;k++)
 	{	
 		inv_2x2(&Q[4*k], &Q_inv[0]); // Work out the inverse of Q (whitening matrix at each frequency bin)
 		
@@ -547,14 +476,42 @@ void main(void)
 			X[CH1 + index].cart = temp[0]; 
 			X[CH2 + index].cart = temp[1];
 		}
-	}	
+	}*/	
+	
 	
 	// Unmixing filter multiplied the estimated source @ each freq needs to go here!
+/*	for(k=0;k<N;k++)
+	{		
+		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
+		{
+			index = N*m + k;
+			cmplx_mult_add(Wp[0+index], X[CH1 + index].cart, Wp[1+index], X[CH2 + index].cart, &temp[0].real, &temp[0].imag);
+			cmplx_mult_add(Wp[2+index], X[CH1 + index].cart, Wp[3+index], X[CH2 + index].cart, &temp[1].real, &temp[1].imag);
+			
+			S[CH1 + index] = temp[0]; 
+			S[CH2 + index] = temp[1];
+		}
+	}*/	
+	
+	
+	// Now recover original sources in the frequency by multiplying by the inverse of the whitening matrix
+	for(k=0;k<N;k++)
+	{		
+		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix (in fact the multication is W*X at each freq bin)
+		{
+			index = N*m + k;
+			cmplx_mult_add(Wp[4*k + 0], X_org[CH1 + index].cart, Wp[4*k + 1], X_org[CH2 + index].cart, &temp[0].real, &temp[0].imag);
+			cmplx_mult_add(Wp[4*k + 2], X_org[CH1 + index].cart, Wp[4*k + 3], X_org[CH2 + index].cart, &temp[1].real, &temp[1].imag);
+			
+			S[CH1 + index] = temp[0]; 
+			S[CH2 + index] = temp[1];
+		}
+	}	
 	
 	
 	
-	istft(&Xstart_ptr[0], x, N, 40960, N);// Resynthesise the first source
-	
+	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);// Resynthesise the first source
+	istft(&X2_ptr->cart, &x[CH2], N, 40960, N_INT/2);// Resynthesise the second source
 		
 	while(1);
 }                                 //end of main()
