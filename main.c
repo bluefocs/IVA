@@ -7,7 +7,7 @@
  * LED 2) Indicates 1024 point FFT / STFT is complete with 50% overlapping with hanning 
  * 			window (see note).
  * LED 3) PCA complete.
- * LED 4) IVA complete. Though feedthrough audio continues via the interrupt.
+ * LED 4) IVA complete, ISTFT in progress. Though feedthrough audio continues via the interrupt.
  * 
  * Interrupt - continuous 'feedthrough' audio system continuously sampling audio data
  * from the line in and outputting it to the headphones.
@@ -60,11 +60,6 @@
 #include "twiddles.h"
 #include "hamming.h"
 #include "istft.h"
-#include <csl_cache.h>
-//#include <utility.h>
-// Inlcudes for ifft test
-//#include "DSPF_sp_icfftr2_dif.h"
-//#include "DSPF_sp_bitrev_cplx.h"
 
 Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;	//set sampling rate
 DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
@@ -80,7 +75,9 @@ static unsigned short t = 0;
 complexpair *X_ptr[TIME_BLOCKS];
 COMPLEX *Xstart_ptr;
 
-
+//
+unsigned short outputstate=0;
+unsigned int source_count=0; 
 // Buffers for the FFT
 complexpair buffer1[N_INT],buffer2[N_INT];	// Buffers for the FFTs of length 1024
 
@@ -107,8 +104,27 @@ interrupt void c_int11(void)      //ISR
   	
 	DSK6713_LED_on(0);		
 	
-	outdata.uint = input_sample(); // 
-	output_sample(outdata.uint);
+	if (outputstate==0)/// This is the default
+	{
+		outdata.uint = input_sample(); // 
+		output_sample(outdata.uint);
+	}
+	else if(outputstate==1)
+	{
+		output_left_sample((short)(20000*x[source_count++]));
+		if(source_count>CH2)
+		{
+			source_count=0;
+		}
+	}
+	else//outputstate==2
+	{
+		output_left_sample((short)(20000*x[CH2+source_count++]));
+		if(source_count>CH2)
+		{
+			source_count=0;
+		}
+	}
 	
 	//Original way of reading in data
 	//(input_ptr + buffercount)->numbers[IMAG] = 0.0; 
@@ -437,6 +453,8 @@ void main(void)
 		Wp[4*k + 3].real = 1;
 		Wp[4*k + 3].imag = 0;	
 	}
+	/******* PCA ENDS HERE *******/
+	
 	DSK6713_LED_on(2);
 	//istft(&Xstart_ptr[0], x_rec, N, 40960, N);// Resynthesise the first mixture to test istft
 	
@@ -513,5 +531,19 @@ void main(void)
 	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);// Resynthesise the first source
 	istft(&X2_ptr->cart, &x[CH2], N, 40960, N_INT/2);// Resynthesise the second source
 		
-	while(1);
+	while(1)
+	{
+		if(DSK6713_DIP_get(1)==0)
+		{
+			outputstate=1;
+		}
+		else if(DSK6713_DIP_get(0)==0)	
+		{
+			outputstate=2;
+		}
+		else
+		{
+			outputstate=0;// Default - feedthrough
+		}
+	}
 }                                 //end of main()

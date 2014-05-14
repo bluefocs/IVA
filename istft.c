@@ -1,11 +1,15 @@
 /*
  * Implements an inverse short time Fourier transform.
  * 
- * Uses TI's decimation in frequency FFT function and bit reversal. 
+ * Uses TI's decimation in frequency FFT function and bit reversal. Note interrupts are turned off
+ * to use the TI DSPLIB functions.
  * 
- * Not yet been fully debugged.
+ * Doubles the freq domain data provided to the function (i.e. recreates the other half of the 
+ * STFT) and takes the complex conjugate.
  * 
- * Originally created 24/25-4-2014, J. Harris, Loughborough University, UK
+ * Originally created 24/25-4-2014, J. Harris, Loughborough University, UK.
+ * 
+ * Fully debugged - 13-5-2014.
  * 
  * 
 */
