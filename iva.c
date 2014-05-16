@@ -12,7 +12,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	const float recip_TIME_BLOCKS = 1.0 / (float)TIME_BLOCKS;
 	unsigned short k=0, m=0, mat_k=0, iter=0;
 	unsigned int ch1_i=0, ch2_i=0;
-	const unsigned short maxiter=500;
+	const unsigned short maxiter=600;
 	const float mu=0.1;
 //	COMPLEX detWp;
 	float Ssq[TIME_BLOCKS * NSOURCES];
@@ -27,7 +27,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		Ssq[m]=0.0;
 	}
 	
-	#pragma MUST_ITERATE(500,500)
+	#pragma MUST_ITERATE(600,600)
 	for(iter=0;iter<maxiter;iter++)
 	{
 		//dlw = 0;// Used for cost function value		

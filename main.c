@@ -52,6 +52,8 @@
  *  - Write FastInvSqrt function in linear assembly. 
  */
 #include "dsk6713.h"
+#include "dsk6713_led.h"
+#include "dsk6713_dip.h"
 #include "DSK6713_AIC23.h"	//codec-DSK interface support
 #include "fft.h"
 #include "additional_math.h"
@@ -111,7 +113,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else if(outputstate==1)
 	{
-		output_left_sample((short)(20000*x[source_count++]));
+		output_left_sample((short)(10*x[source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -119,7 +121,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else//outputstate==2
 	{
-		output_left_sample((short)(20000*x[CH2+source_count++]));
+		output_left_sample((short)(10*x[CH2+source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -160,14 +162,14 @@ void main(void)
 	unsigned short k=0; // k is the freqency bin index
 	complexpair *w_ptr = (complexpair*)w;	
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
-
+	COMPLEX *S1_ptr=&S[CH1], *S2_ptr=&S[CH2];
 	
 	// PCA variables
 	COMPLEX mean1, mean2, temp[2]; 
 	COMPLEX d[2], E[2][2], Rxx[2][2];
 	COMPLEX_DBL Rxx_dbl[2][2];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
-	COMPLEX W_temp[4],W_inv[4],Q_inv[4];
+	COMPLEX W_temp[4],W_inv[4];//
 	float D[2]={0.0, 0.0};
 	
 	// Test variables
@@ -237,7 +239,8 @@ void main(void)
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
-		
+	
+//	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
@@ -358,6 +361,7 @@ void main(void)
 	
 	
 		Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
+		Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
 		
 		eig((&Rxx[0][0]), (&d[0]), (&E[0][0]));
 	
@@ -528,8 +532,8 @@ void main(void)
 	
 	
 	
-	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);// Resynthesise the first source
-	istft(&X2_ptr->cart, &x[CH2], N, 40960, N_INT/2);// Resynthesise the second source
+	istft(S1_ptr, &x[CH1], N, 40960, N_INT/2);// Resynthesise the first source
+	istft(S2_ptr, &x[CH2], N, 40960, N_INT/2);// Resynthesise the second source
 		
 	while(1)
 	{
