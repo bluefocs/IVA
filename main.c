@@ -68,7 +68,7 @@ DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
 Uint16 inputsource=DSK6713_AIC23_INPUT_LINE; // select input source
 
 
-union complexdata X[NSOURCES*STFT_SIZE]; // Used to store time data, freq domain data and whitened data
+union complexdata X[ NSOURCES * STFT_SIZE ]; // Used to store time data, freq domain data and whitened data
 union complexdata X_org[NSOURCES*STFT_SIZE]; // Original X data for to be separated at the end
 float x[NSOURCES * TIME_BLOCKS_INT * N_INT];
 float x_rec[TIME_BLOCKS_INT * N_INT];
@@ -235,6 +235,7 @@ void main(void)
 		memcpy(&X[CH2 + n + m].cart, &buffer2[0].cart, N*sizeof(complexpair));
 		m++;
 	}
+	
 	
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 

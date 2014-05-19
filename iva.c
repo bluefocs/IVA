@@ -2,6 +2,7 @@
 #include "definitions.h"
 #include "additional_math.h"
 #include "DSPF_sp_mat_mul_cplx.h"
+//#include "c67fastMath.h"
 
 COMPLEX S[N * NSOURCES * TIME_BLOCKS]; //
 #pragma DATA_SECTION(S,".EXT_RAM")
@@ -73,6 +74,9 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			
 			Ssq[ m ] = FastInvSqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = FastInvSqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
+			
+			//Ssq[ m ] = rsqrtsp(Ssq[ m ]);
+			//Ssq[TIME_BLOCKS+m] = rsqrtsp(Ssq[TIME_BLOCKS+m]);
 			
 			
 			/*
