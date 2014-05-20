@@ -61,7 +61,7 @@
 #include "definitions.h"
 #include "twiddles.h"
 #include "hamming.h"
-#include "istft.h"
+#include "fourier.h"
 
 Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;	//set sampling rate
 DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
@@ -113,7 +113,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else if(outputstate==1)
 	{
-		output_left_sample((short)(10*x[source_count++]));
+		output_left_sample(20*(short)(x[source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -121,7 +121,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else//outputstate==2
 	{
-		output_left_sample((short)(10*x[CH2+source_count++]));
+		output_left_sample(20*(short)(x[CH2+source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -160,7 +160,7 @@ void main(void)
 {	
 	unsigned int index=0, n=0, m=0;
 	unsigned short k=0; // k is the freqency bin index
-	complexpair *w_ptr = (complexpair*)w;	
+	//complexpair *w_ptr = (complexpair*)w;	
 	union complexdata *X1_ptr=&X[CH1], *X2_ptr=&X[CH2]; // Pointers to each individual channel
 	COMPLEX *S1_ptr=&S[CH1], *S2_ptr=&S[CH2];
 	
@@ -208,7 +208,7 @@ void main(void)
 	while(t<TIME_BLOCKS_INT);// Input data loop
 	
 	
-
+/*
 	
 	m=0; // Don't think this a problem using m here?
 	// 'Offline' STFT goes here
@@ -235,13 +235,14 @@ void main(void)
 		memcpy(&X[CH2 + n + m].cart, &buffer2[0].cart, N*sizeof(complexpair));
 		m++;
 	}
-	
-	
+	*/
+	stft(&X1_ptr->cart, x, N, 40960, N_INT/2);// First 'microphone'
+	stft(&X2_ptr->cart, &x[CH2_T], N, 40960, N_INT/2); // Second 'microphone'
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-//	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	
+	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
