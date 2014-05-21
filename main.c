@@ -62,6 +62,7 @@
 #include "twiddles.h"
 #include "hamming.h"
 #include "fourier.h"
+#include "c67fastMath.h"
 
 Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;	//set sampling rate
 DSK6713_AIC23_CodecHandle hCodec; // codec handle declaration
@@ -167,10 +168,10 @@ void main(void)
 	// PCA variables
 	COMPLEX mean1, mean2, temp[2]; 
 	COMPLEX d[2], E[2][2], Rxx[2][2];
-	COMPLEX_DBL Rxx_dbl[2][2];
+	COMPLEX_DBL Rxx_dbl[2][2], Q_temp[4];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];//
-	float D[2]={0.0, 0.0};
+	float D[2] = {0.0, 0.0};
 	
 	// Test variables
 /*	float test = 0.0;//, a = 2.1, b = 1.3;
@@ -242,11 +243,12 @@ void main(void)
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
+	//istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
 	{
+
 		D[0] = 0.0;
 		D[1] = 0.0;
 		d[0].real = 0.0;
@@ -365,7 +367,7 @@ void main(void)
 		Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
 		Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
 		
-		eig((&Rxx[0][0]), (&d[0]), (&E[0][0]));
+		eig((&Rxx[0][0]), d, (&E[0][0]));
 	
 			
 		if(d[1].real>d[0].real)// This has replaced the sort function
@@ -411,21 +413,31 @@ void main(void)
 		//D[1] = pow(d[1].real,-0.5);
 //		D[0] = 1.0/sqrt(d[0].real);
 //		D[1] = 1.0/sqrt(d[1].real);
-		D[0] = FastInvSqrt(d[0].real); // Google fast inverse square root for more info
-		D[1] = FastInvSqrt(d[1].real);
-		
+//		D[0] = FastInvSqrt(d[0].real); // Google fast inverse square root for more info
+//		D[1] = FastInvSqrt(d[1].real);
+		D[0] = rsqrtf(d[0].real);
+		D[1] = rsqrtf(d[1].real);
 	
 	
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
-		Q[4*k + 0].real = D[0] * E[0][0].real; 
-		Q[4*k + 0].imag = D[0] * E[0][0].imag * (-1);// Hermitian transpose
-		Q[4*k + 1].real = D[0] * E[1][0].real; 
-		Q[4*k + 1].imag = D[0] * E[1][0].imag * (-1);
-		Q[4*k + 2].real = D[1] * E[0][1].real; 
-		Q[4*k + 2].imag = D[1] * E[0][1].imag * (-1);
-		Q[4*k + 3].real = D[1] * E[1][1].real; 
-		Q[4*k + 3].imag = D[1] * E[1][1].imag * (-1);
-	
+		Q_temp[4*k + 0].real = (double)D[0] * (double)E[0][0].real; 
+		Q_temp[4*k + 0].imag = (double)D[0] * (double)E[0][0].imag * (-1);// Hermitian transpose
+		Q_temp[4*k + 1].real = (double)D[0] * (double)E[1][0].real; 
+		Q_temp[4*k + 1].imag = (double)D[0] * (double)E[1][0].imag * (-1);
+		Q_temp[4*k + 2].real = (double)D[1] * (double)E[0][1].real; 
+		Q_temp[4*k + 2].imag = (double)D[1] * (double)E[0][1].imag * (-1);
+		Q_temp[4*k + 3].real = (double)D[1] * (double)E[1][1].real; 
+		Q_temp[4*k + 3].imag = (double)D[1] * (double)E[1][1].imag * (-1);
+		
+		
+		Q[4*k + 0].real = (float)Q_temp[4*k + 0].real;
+		Q[4*k + 0].imag = (float)Q_temp[4*k + 0].imag;
+		Q[4*k + 1].real = (float)Q_temp[4*k + 1].real;
+		Q[4*k + 1].imag = (float)Q_temp[4*k + 1].imag;
+		Q[4*k + 2].real = (float)Q_temp[4*k + 2].real;
+		Q[4*k + 2].imag = (float)Q_temp[4*k + 2].imag;
+		Q[4*k + 3].real = (float)Q_temp[4*k + 3].real;
+		Q[4*k + 3].imag = (float)Q_temp[4*k + 3].imag;
 			
 			
 		// Remove mean from X - mean values are worked out 

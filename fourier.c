@@ -1,15 +1,15 @@
 /*
- * Implements an inverse short time Fourier transform.
+ * Implements a short time Fourier transform and an inverse short time Fourier transform.
  * 
- * Uses TI's decimation in frequency FFT function and bit reversal. Note interrupts are turned off
- * to use the TI DSPLIB functions.
+ * Uses TI's decimation in frequency FFT function and bit reversal for ifft. Note interrupts 
+ * are turned off to use the TI DSPLIB FFT/IFFT functions.
  * 
  * Doubles the freq domain data provided to the function (i.e. recreates the other half of the 
- * STFT) and takes the complex conjugate.
+ * STFT when creating buffer) and takes the complex conjugate.
  * 
  * Originally created 24/25-4-2014, J. Harris, Loughborough University, UK.
  * 
- * Fully debugged - 13-5-2014.
+ * Fully debugged - 20-5-2014.
  * 
  * 
 */
@@ -18,15 +18,15 @@
 #include "hamming.h"
 #include "twiddles.h"
 #include "DSPF_sp_icfftr2_dif.h"
+#include "DSPF_sp_cfftr2_dit.h"
 #include "csl_irq.h"
-#include "DSPF_sp_bitrev_cplx.h"
-//#include "freqsig.h"//Test freq domain signal
+//#include "DSPF_sp_bitrev_cplx.h"
 #include <math.h>
+
 #pragma DATA_ALIGN(buffer,8)
 float buffer[(2*N_INT) + 8];
 #pragma DATA_SECTION(buffer,".EXT_RAM")
 
-//short brev[N_INT];
 
 void gen_w_r2(float* w, int n)
 {
@@ -46,11 +46,11 @@ void gen_w_r2(float* w, int n)
 void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 {
 	// *X  = pointer to stft
-	// *xtime =pointer to area of memory where the transform will be stored 
+	// *xtime =pointer to area of memory where the inverse transform will be stored 
 	// overlap = number of samples of overlap in orginal stft
 	// nfreq = number of frequency bins 
 	// time_len = number of samples in the original time domain signal.
-	// float buffer[2*N_INT];
+
 	unsigned int prevGIE; // Previous global interrupt flag state
 	unsigned int n=0,k=0, start=4; 
 	unsigned int block_ind=0;// Block index
@@ -69,7 +69,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	
 
 	/*
-	// Before the STFT a little test
+	// Before the STFT a little test - left commented out incase one needs a quick sanity check ...
 	prevGIE = IRQ_globalDisable(); // Turn off global interrupts
 		
  		
@@ -80,7 +80,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	IRQ_globalRestore(prevGIE);// Restore previous gloabl interrupt state
 	for(n=0; n < 2*N_INT; n++)
  	{
- 		freq[n]=freq[n]/(float)N_INT;
+ 		freq[n]=freq[n]*fftlen_inv;
  	}
 	*/ // End of test
 	// overwrite time buffer
@@ -140,7 +140,6 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	unsigned int prevGIE; // Previous global interrupt flag state
 	unsigned int n=0, m=0;
 	unsigned short k=0;
-	const float fftlen_inv = 1/(float)N_INT;
 	
 	for(n=0;n<8;n++)
 	{
@@ -150,10 +149,8 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	gen_w_r2(w, N_INT);
 	
 	bit_rev(w, N_INT>>1);/// Offending line ??? -yes!
-	
-	
-	m=0; //Block count used in loop below
-	
+		
+	m=0;//Important!
 	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=overlap) // N/2 for 50% overlapping 
 	{	
 		
@@ -174,7 +171,7 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		
 		
 		memcpy(&X[n + m], &buffer[0], N*sizeof(complexpair)); 
-		m++; // Increment block count
+		m++;
 	}
 }
 

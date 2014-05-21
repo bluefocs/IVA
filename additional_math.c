@@ -1,4 +1,20 @@
 #include "additional_math.h"
+#include "c67fastMath.h"
+
+/*
+double det_2x2_dp(double)
+{
+	COMPLEX_DBL out;
+	float aminusb;
+
+	aminusb = (z1.real - z1.imag) * z2.imag;
+	// Uses an identity to reduce the number of multiplications
+	out.real = z1.real*(z2.real - z2.imag) + aminusb;
+	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;
+	
+	
+}*/
+
 
 float FastInv4over3(float x) 
 {
@@ -138,19 +154,20 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 	eigvecs[3].real = eigvecs[3].real / norm_fact;
 	eigvecs[3].imag = eigvecs[3].imag / norm_fact;
 	*/
+	//
 	
 	//Normalise - may not be as accurate as the above method
 	norm_fact = mag(eigvecs[0])*mag(eigvecs[0]) + mag(eigvecs[2])*mag(eigvecs[2]);
-	eigvecs[0].real = eigvecs[0].real * FastInvSqrt( norm_fact );
-	eigvecs[0].imag = eigvecs[0].imag * FastInvSqrt( norm_fact );
-	eigvecs[2].real = eigvecs[2].real * FastInvSqrt( norm_fact );
-	eigvecs[2].imag = eigvecs[2].imag * FastInvSqrt( norm_fact );
+	eigvecs[0].real = eigvecs[0].real * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[0].imag = eigvecs[0].imag * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[2].real = eigvecs[2].real * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[2].imag = eigvecs[2].imag * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
 	
 	norm_fact = mag(eigvecs[1])*mag(eigvecs[1]) + mag(eigvecs[3])*mag(eigvecs[3]);
-	eigvecs[1].real = eigvecs[1].real * FastInvSqrt( norm_fact );
-	eigvecs[1].imag = eigvecs[1].imag * FastInvSqrt( norm_fact );
-	eigvecs[3].real = eigvecs[3].real * FastInvSqrt( norm_fact );
-	eigvecs[3].imag = eigvecs[3].imag * FastInvSqrt( norm_fact );
+	eigvecs[1].real = eigvecs[1].real * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[1].imag = eigvecs[1].imag * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[3].real = eigvecs[3].real * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
+	eigvecs[3].imag = eigvecs[3].imag * rsqrtf( norm_fact ); //FastInvSqrt( norm_fact );
 }
 float mag(COMPLEX x)
 {

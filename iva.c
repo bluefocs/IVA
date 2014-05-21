@@ -6,7 +6,8 @@
 
 COMPLEX S[N * NSOURCES * TIME_BLOCKS]; //
 #pragma DATA_SECTION(S,".EXT_RAM")
-
+double Ssq[TIME_BLOCKS * NSOURCES];
+#pragma DATA_SECTION(Ssq,".EXT_RAM")
 
 void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 {
@@ -15,12 +16,12 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	unsigned int ch1_i=0, ch2_i=0;
 	const unsigned short maxiter=600;
 	const float mu=0.1;
-//	COMPLEX detWp;
-	float Ssq[TIME_BLOCKS * NSOURCES];
-//	double epsilon = 0.00001;
+	COMPLEX detWp;
+	
+	double epsilon = 0.000001;
 	COMPLEX W_temp[4], W_new[4];//, detWp;	
 	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
-//	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj=0.0, dlw=0.0, tol = 0.000001, comparison=0.0;
+	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj[600], dlw=0.0, tol = 0.000001, comparison=0.0;
 	
 	// Initialise Ssq
 	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
@@ -28,10 +29,10 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		Ssq[m]=0.0;
 	}
 	
-	#pragma MUST_ITERATE(600,600)
+	//#pragma MUST_ITERATE(600,600)
 	for(iter=0;iter<maxiter;iter++)
 	{
-		//dlw = 0;// Used for cost function value		
+		//dlw = 0.0;// Used for cost function value		
 		#pragma MUST_ITERATE(513,513)
 		for(k=0;k<N;k++)
 		{
@@ -50,7 +51,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		
 		
 		
-//		SumSsq=0.0;// Used for cost function value
+		SumSsq=0.0;// Used for cost function value
 		// Calculate score function function - derived from the multivariate Gaussian distribution function.
 		for(m=0;m<TIME_BLOCKS;m++) // Summnation loop - Can this be sped up ? and be done with double precision?
 		{
@@ -58,8 +59,8 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			{
 				ch1_i = N*m + k;		// Channel 1 index
 				ch2_i = CH2 + ch1_i; 	// Channel 2 index		
-				Ssq[ m ] += mag_sqrd(S[ch1_i]);	
-				Ssq[TIME_BLOCKS+m] += mag_sqrd(S[ch2_i]);	
+				Ssq[ m ] += (double)mag_sqrd(S[ch1_i]);	
+				Ssq[TIME_BLOCKS+m] += (double)mag_sqrd(S[ch2_i]);	
 				//Ssq[ m ] += ((mag(S[ch1_i])) * (mag(S[ch1_i])));			//pow(mag(S[CH1 + i]), 2.0);
 				//Ssq[TIME_BLOCKS+m] += ((mag(S[CH2 + i])) * (mag(S[CH2 + i])));//pow(mag(S[CH2 + i]), 2.0);
 
@@ -71,15 +72,17 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 				//Ssq[TIME_BLOCKS_50PC+m] += powsp(mag(S[CH2 + N2*m + k]), 2.0);
 			}
 			
-			
+			/*
 			Ssq[ m ] = FastInvSqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = FastInvSqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
+			*/
 			
+			// Use TI functions
 			//Ssq[ m ] = rsqrtsp(Ssq[ m ]);
 			//Ssq[TIME_BLOCKS+m] = rsqrtsp(Ssq[TIME_BLOCKS+m]);
 			
 			
-			/*
+			
 			// The 5 lines below can be sped up by using the fast inverse sqrt function
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
@@ -91,7 +94,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			// Does the inversion work in this loop? 
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
 			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
-			*/
+			
 		}
 		
 
@@ -171,9 +174,11 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			//W_new[3] = cmplx_add(cmplx_mult(W_temp[2], Wp[4*k + 1]), cmplx_mult(W_temp[3], Wp[4*k + 3]) );
 			
 			
-			
-		//	detWp = cmplx_minus(cmplx_mult(Wp[4*k + 0], Wp[4*k + 3]), cmplx_mult(Wp[4*k + 2], Wp[4*k + 3]));  // Determinate of Wp			
-		//	dlw = dlw + (double)log(mag(detWp) + epsilon);//mag replaces the abs function
+			/*
+			detWp = cmplx_minus(cmplx_mult(Wp[4*k + 0], Wp[4*k + 3]), cmplx_mult(Wp[4*k + 2], Wp[4*k + 3]));  // Determinate of Wp			
+
+			dlw = dlw + (double)log((double)mag(detWp) + (double)epsilon);//mag replaces the abs function
+			*/
 			
 			// Unrolled loop - update unmixing matrix at frequency bin
 			Wp[mat_k + 0].real = Wp[mat_k + 0].real + (mu*W_new[0].real); //mu is the learning rate
@@ -191,13 +196,13 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		
 		
 		/*
-		Obj = (((double)SumSsq/(double)TIME_BLOCKS) - dlw)/((double)NSOURCES*(double)nfreq);
+		Obj[iter] = (((double)SumSsq/(double)TIME_BLOCKS) - dlw)/((double)NSOURCES*(double)nfreq);
 		
 		
-		dObj = pObj - Obj; // Work out change in Obj
-		pObj = Obj; // Current Obj becomes 'previous' Obj
+		dObj = pObj - Obj[iter]; // Work out change in Obj
+		pObj = Obj[iter]; // Current Obj becomes 'previous' Obj
 			// Update message can go here		
-		comparison = fabs(dObj)/fabs(Obj);//as Obj and dObj are real use 'fabs' function
+		comparison = fabs(dObj)/fabs(Obj[iter]);//as Obj and dObj are real use 'fabs' function
 			
 		if(comparison < tol) // Is the change in Obj divided by the current Obj lower than a tolerance?
 		{
