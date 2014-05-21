@@ -21,13 +21,13 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	double epsilon = 0.000001;
 	COMPLEX W_temp[4], W_new[4];//, detWp;	
 	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
-	double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj[600], dlw=0.0, tol = 0.000001, comparison=0.0;
+	//double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj[600], dlw=0.0, tol = 0.000001, comparison=0.0;
 	
 	// Initialise Ssq
-	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
+/*	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
 	{
 		Ssq[m]=0.0;
-	}
+	}*/
 	
 	//#pragma MUST_ITERATE(600,600)
 	for(iter=0;iter<maxiter;iter++)
@@ -51,7 +51,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 		
 		
 		
-		SumSsq=0.0;// Used for cost function value
+		// SumSsq=0.0;// Used for cost function value
 		// Calculate score function function - derived from the multivariate Gaussian distribution function.
 		for(m=0;m<TIME_BLOCKS;m++) // Summnation loop - Can this be sped up ? and be done with double precision?
 		{
@@ -88,7 +88,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
 			
 			// Calculate the sum of all the values in Ssq before the inverse is taken, this is used in the break condition below
-			SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS+m];
+			//SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS+m];
 			
 			// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
 			// Does the inversion work in this loop? 

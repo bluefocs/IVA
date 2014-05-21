@@ -168,7 +168,7 @@ void main(void)
 	// PCA variables
 	COMPLEX mean1, mean2, temp[2]; 
 	COMPLEX d[2], E[2][2], Rxx[2][2];
-	COMPLEX_DBL Rxx_dbl[2][2], Q_temp[4];
+	COMPLEX_DBL Rxx_dbl[2][2];//, Q_temp[4];
 	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];//
 	float D[2] = {0.0, 0.0};
@@ -420,7 +420,7 @@ void main(void)
 	
 	
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
-		Q_temp[4*k + 0].real = (double)D[0] * (double)E[0][0].real; 
+	/*	Q_temp[4*k + 0].real = (double)D[0] * (double)E[0][0].real; 
 		Q_temp[4*k + 0].imag = (double)D[0] * (double)E[0][0].imag * (-1);// Hermitian transpose
 		Q_temp[4*k + 1].real = (double)D[0] * (double)E[1][0].real; 
 		Q_temp[4*k + 1].imag = (double)D[0] * (double)E[1][0].imag * (-1);
@@ -438,6 +438,17 @@ void main(void)
 		Q[4*k + 2].imag = (float)Q_temp[4*k + 2].imag;
 		Q[4*k + 3].real = (float)Q_temp[4*k + 3].real;
 		Q[4*k + 3].imag = (float)Q_temp[4*k + 3].imag;
+			*/
+			
+			
+		Q[4*k + 0].real = D[0] * E[0][0].real; 
+		Q[4*k + 0].imag = D[0] * E[0][0].imag * (-1);// Hermitian transpose
+		Q[4*k + 1].real = D[0] * E[1][0].real; 
+		Q[4*k + 1].imag = D[0] * E[1][0].imag * (-1);
+		Q[4*k + 2].real = D[1] * E[0][1].real; 
+		Q[4*k + 2].imag = D[1] * E[0][1].imag * (-1);
+		Q[4*k + 3].real = D[1] * E[1][1].real; 
+		Q[4*k + 3].imag = D[1] * E[1][1].imag * (-1);
 			
 			
 		// Remove mean from X - mean values are worked out 
