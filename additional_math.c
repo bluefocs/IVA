@@ -45,6 +45,18 @@ void inv_2x2(COMPLEX *A, COMPLEX *out)
 	detinv.real = (1/mag(det)) * cos(arg(det));
 	detinv.imag = (1/mag(det)) * sin(arg(det)) * (-1);
 	
+	
+	
+	out[0] = cmplx_mult(A[3],detinv);
+	out[3] = cmplx_mult(A[0],detinv);
+	out[1] = cmplx_mult(A[1],detinv);
+	out[2] = cmplx_mult(A[2],detinv);
+	out[1].real = out[1].real*(-1);
+	out[1].imag = out[1].imag*(-1);
+	out[2].real = out[2].real*(-1);
+	out[2].imag = out[2].imag*(-1);
+	
+	/*
 	out[0].real = A[3].real * detinv.real;
 	out[0].imag = A[3].imag * detinv.imag;
 	out[3].real = A[0].real * detinv.real;
@@ -53,6 +65,7 @@ void inv_2x2(COMPLEX *A, COMPLEX *out)
 	out[1].imag = A[1].imag * detinv.imag * (-1.0);
 	out[2].real = A[2].real * detinv.real * (-1.0);
 	out[2].imag = A[2].imag * detinv.imag * (-1.0);
+	*/
 }
 
 

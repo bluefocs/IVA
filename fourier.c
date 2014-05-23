@@ -28,6 +28,9 @@ float buffer[(2*N_INT) + 8];
 #pragma DATA_SECTION(buffer,".EXT_RAM")
 
 
+float scale[CH2_T];
+#pragma DATA_SECTION(scale,".EXT_RAM")
+
 void gen_w_r2(float* w, int n)
 {
 	int i, j=1;
@@ -56,6 +59,9 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	unsigned int block_ind=0;// Block index
 	const float fftlen_inv = 1/(float)N_INT;
 //	complexpair *w_ptr = (complexpair*)w;// Pointer to twiddle factors
+
+	// Variables for scaling
+	//float scale=0.0, w0=0.0;
 
 	//Not sure if the buffer array should be padded with zeros?
 	for(n=0;n<8;n++)
@@ -87,6 +93,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	for(k=0; k<time_len; k++)
 	{
 		xtime[k]=0.0;
+		scale[k]=0.0;
 	}
 	
 	for(n=0;n<time_len;n+=overlap)// Should overlap=nfreq?
@@ -115,21 +122,37 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		
 	
  		bit_rev(buffer, N_INT);// BIT REVERSAL DEFINITELY GOES BEFORE! (IFFT)
- 		prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		DSPF_sp_icfftr2_dif(buffer, w, N_INT); // Decimation in freq radix 2 IFFT by TI	
-		IRQ_globalRestore(prevGIE);// Restore previous global interrupt state
+ 		//prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		DSPF_sp_icfftr2_dif_c(buffer, w, N_INT); // Decimation in freq radix 2 IFFT by TI	
+		//IRQ_globalRestore(prevGIE);// Restore previous global interrupt state
 		
 		
 		
-		for(k=0; k<4*(nfreq - 1); k++)// Divide by the length as it's not done by the ifft function above
+		for(k=0; k<2*(nfreq - 1); k++)// Divide by the length as it's not done by the ifft function above
  		{
- 			buffer[k]=buffer[k]*fftlen_inv;
+ 			buffer[2*k]=buffer[2*k]*fftlen_inv;
  		}
  		
 		for(k=0; k<2*(nfreq - 1); k++) // Overlap add method
 		{
 			xtime[n+k] += buffer[2*k] * hamming[k]; // Only bother with the real part
-		}
+			scale[n+k] += hamming[k] * hamming[k]; // Work out weird scally factor thing
+		}			
+	}
+/*	for(k=0; k<2*(nfreq - 1); k++) // Work out last little bit of the scally thing
+	{
+		scale[n+k] += hamming[k] * hamming[k]; // Only bother with the real part
+	}*/ 
+	// This scaling is included in other implementations of istft
+	/*for(k=0; k<2*(nfreq - 1); k++) // Calculate scaling factor
+	{
+		w0 += hamming[k]*hamming[k];
+	}
+
+	scale = overlap/w0;*/
+	for(k=0; k<time_len; k++) // Calculate scaling factor
+	{
+		xtime[k] = xtime[k] / scale[k];
 	}
 }
 
@@ -164,16 +187,80 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
 		// Calculate 1024 point FFT on current buffers
-		prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		DSPF_sp_cfftr2_dit(buffer, w, N_INT);
+		//prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
 		bit_rev(buffer, N_INT); // Bit reversal goes afterwards for the forward fft
-		IRQ_globalRestore(prevGIE);
+		//IRQ_globalRestore(prevGIE);
 		
 		
-		memcpy(&X[n + m], &buffer[0], N*sizeof(complexpair)); 
+		memcpy(&X[n + m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
 		m++;
 	}
 }
 
+void DSPF_sp_cfftr2_dit_c(float* x, float* w, short n)
+{                                                                   
+	short n2, ie, ia, i, j, k, m;                                    
+	float rtemp, itemp, c, s;                                        
+                                                                           
+	n2 = n;                                                          
+	ie = 1;                                                          
+                                                                           
+	for(k=n; k > 1; k >>= 1)                                         
+	{                                                                
+		n2 >>= 1;                                                     
+		ia = 0;                                                       
+		for(j=0; j < ie; j++)                                         
+		{                                                             
+			c = w[2*j];                                                
+			s = w[2*j+1];                                              
+			for(i=0; i < n2; i++)                                      
+			{                                                          
+				m = ia + n2;                                            
+				rtemp     = c * x[2*m]   + s * x[2*m+1];                
+				itemp     = c * x[2*m+1] - s * x[2*m];                  
+				x[2*m]    = x[2*ia]   - rtemp;                          
+				x[2*m+1]  = x[2*ia+1] - itemp;                          
+				x[2*ia]   = x[2*ia]   + rtemp;                          
+				x[2*ia+1] = x[2*ia+1] + itemp;                          
+				ia++;                                                   
+			}                                                          
+			ia += n2;                                                  
+		}                                                             
+		ie <<= 1;                                                     
+	}                                                                
+}  
+void DSPF_sp_icfftr2_dif_c(float    * x, float * w, short n)
+{
 
+/* ======================================================================== */
+/* ======================================================================== */
+     short n2, ie, ia, i, j, k, m;
+     float rtemp, itemp, c, s;
 
+     n2 = 1;
+     ie = n;
+     for(k=n; k > 1; k >>= 1)
+     {
+        ie >>= 1;
+        ia = 0;
+        for(j=0; j < ie; j++)
+        {
+           c = w[2*j];
+           s = w[2*j+1];
+           for(i=0; i < n2; i++)
+           {
+              m = ia + n2;
+              rtemp     = x[2*ia]   - x[2*m];
+              x[2*ia]   = x[2*ia]   + x[2*m];
+              itemp     = x[2*ia+1] - x[2*m+1];
+              x[2*ia+1] = x[2*ia+1] + x[2*m+1];
+              x[2*m]    = c*rtemp   - s*itemp;
+              x[2*m+1]  = c*itemp   + s*rtemp;
+              ia++;
+           }
+           ia += n2;
+        }
+        n2 <<= 1;
+      }
+}

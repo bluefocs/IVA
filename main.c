@@ -55,7 +55,7 @@
 #include "dsk6713_led.h"
 #include "dsk6713_dip.h"
 #include "DSK6713_AIC23.h"	//codec-DSK interface support
-#include "fft.h"
+//#include "fft.h"
 #include "additional_math.h"
 #include "iva.h"
 #include "definitions.h"
@@ -114,7 +114,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else if(outputstate==1)
 	{
-		output_left_sample(20*(short)(x[source_count++]));
+		output_left_sample(5*(short)(x[source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -122,7 +122,7 @@ interrupt void c_int11(void)      //ISR
 	}
 	else//outputstate==2
 	{
-		output_left_sample(20*(short)(x[CH2+source_count++]));
+		output_left_sample(5*(short)(x[CH2+source_count++]));
 		if(source_count>CH2)
 		{
 			source_count=0;
@@ -243,7 +243,7 @@ void main(void)
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-	//istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
+	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
@@ -500,11 +500,11 @@ void main(void)
 		
 		
 		inv_2x2(&W_temp[0], &W_inv[0]);
-		// 2*2 matrix complex multiplication where the non-diagonal elements are zero
+		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - (discard W_inv[1] and W_inv[2])
 		Wp[index + 0] = cmplx_mult(W_inv[0], W_temp[0]);
 		Wp[index + 1] = cmplx_mult(W_inv[0], W_temp[1]); 
-		Wp[index + 2] = cmplx_mult(W_inv[1], W_temp[2]); 
-		Wp[index + 3] = cmplx_mult(W_inv[1], W_temp[3]); 
+		Wp[index + 2] = cmplx_mult(W_inv[3], W_temp[2]); // Used to be W_inv[1], not sure why?
+		Wp[index + 3] = cmplx_mult(W_inv[3], W_temp[3]); // Used to be W_inv[1], not sure why?
 	}	
 	DSK6713_LED_on(3);	
 	
@@ -541,7 +541,7 @@ void main(void)
 	}*/	
 	
 	
-	// Now recover original sources in the frequency by multiplying by the inverse of the whitening matrix
+	// Now recover original sources in the frequency by multiplying by the scaled unmixing matrix
 	for(k=0;k<N;k++)
 	{		
 		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix (in fact the multication is W*X at each freq bin)
