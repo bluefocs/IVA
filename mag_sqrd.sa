@@ -1,0 +1,27 @@
+;					
+;	Find the magnitude of complex number and squares it
+;
+;	|z|^2
+;
+;	Prototype:
+; float mag_sqrd(COMPLEX z);
+;
+;Original C code for multiplication:
+; 	aminusb = (z1.real - z1.imag) * z2.imag;
+;	// Uses an identity to reduce the number of multiplications
+;	out.real = z1.real*(z2.real - z2.imag) + aminusb;
+;	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;					
+;										
+					.def	_mag_sqrd;
+_mag_sqrd:			.cproc 	a_0
+					.reg 	a,b,prod0,prod1,sum,res
+					LDW *a_0++,a			;Load real part variables from structure
+					LDW *a_0,b				; Load imaginary part	
+					MPYSP a,a,prod0			
+					MPYSP b,b,prod1
+					ADDSP prod0,prod1,sum
+					RSQRSP sum,sum		; sqrt reciprocal sp
+					RCPSP sum,sum		; reciprocal sp
+					MPYSP sum,sum,res
+					.return res
+					.endproc		

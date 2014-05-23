@@ -1,0 +1,54 @@
+;					
+;	Multiplies two single precision complex numbers twice and adds them togther
+;	(complex dot product of length two)
+;
+;	[w, x]* |y|
+;			|z|
+;
+; Routine prototype:
+; float cmplx_mult_add(COMPLEX w, COMPLEX x, COMPLEX y, COMPLEX z, float *real, float *imag);
+;
+;Original C code for complex multiply (uses an identity to reduce the number of 
+;	floating point multiplies):
+; 	aminusb = (z1.real - z1.imag) * z2.imag;
+;	// Uses an identity to reduce the number of multiplications
+;	out.real = z1.real*(z2.real - z2.imag) + aminusb;
+;	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;					
+;										
+					.def	_cmplx_mult_add;
+_cmplx_mult_add:	.cproc 	a_0,b_0,a_1,b_1,res_r,res_i
+					.reg 	a,b,c,d,aminusb,real0,imag0,real1,imag1
+					;multiply the first two numbers together (a_0 and b_0)
+					LDW *a_0++,a			;Load variables from structure
+					LDW *a_0++,b			;
+					SUBSP a,b,aminusb		;
+					LDW *b_0++,c			;
+					LDW *b_0++,d			;
+					MPYSP aminusb,d,aminusb	;
+					SUBSP c,d,real0			;
+					MPYSP real0,a,real0		;
+					ADDSP c,d,imag0	
+					MPYSP imag0,b,imag0		;
+					ADDSP real0,aminusb,real0		;
+					ADDSP imag0,aminusb,imag0
+					;multiply the 3rd and 4th numbers together (a_1 abd b_1)
+					LDW *a_1++,a			;Load variables from structure
+					LDW *a_1++,b			;
+					SUBSP a,b,aminusb		;
+					LDW *b_1++,c			;
+					LDW *b_1++,d			;
+					MPYSP aminusb,d,aminusb	;
+					SUBSP c,d,real1			; 
+					MPYSP real1,a,real1		;
+					ADDSP c,d,imag1			;
+					MPYSP imag1,b,imag1		;
+					ADDSP real1,aminusb,real1		;
+					ADDSP imag1,aminusb,imag1
+					; Add the two results
+					ADDSP real0,real1,real0	;
+					ADDSP imag0,imag1,imag0 ;
+					; return result
+					STW real0,*res_r++
+					STW	imag0,*res_i++	
+					.return res_r
+					.endproc		
