@@ -167,15 +167,16 @@ void main(void)
 	
 	// PCA variables
 	COMPLEX mean1, mean2, temp[2]; 
+	COMPLEX_DBL temp_dbl[2];
 	COMPLEX d[2], E[2][2], Rxx[2][2];
-	COMPLEX_DBL Rxx_dbl[2][2];//, Q_temp[4];
-	COMPLEX dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
+	COMPLEX_DBL Rxx_dbl[2][2], E_dbl[2][2], d_dbl[2];//, Q_temp[4];
+	COMPLEX_DBL dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];//
 	float D[2] = {0.0, 0.0};
+	const float inv_timeblocks = 1/(float)TIME_BLOCKS;
 	
 	// Test variables
-/*	float test = 0.0;//, a = 2.1, b = 1.3;
-	float test_r=0.0,test_i=0.0;
+/*	float test_r=0.0,test_i=0.0;
 	COMPLEX c,e;
 	e.real=0.4;
 	e.imag=0.1;
@@ -183,7 +184,7 @@ void main(void)
 	c.imag=2.1;
 	cmplx_mult_add(c, e, e, e, &test_r, &test_i);
 	temp[1] = cmplx_mult(c, e);
-	*/
+*/
 	
 	
 	Xstart_ptr = &(X[0].cart);
@@ -237,7 +238,7 @@ void main(void)
 		m++;
 	}
 	*/
-	stft(&X1_ptr->cart, x, N, 40960, N_INT/2);// First 'microphone'
+	stft(&X1_ptr->cart, x, N, 40960, N_INT/2); // First 'microphone'
 	stft(&X2_ptr->cart, &x[CH2_T], N, 40960, N_INT/2); // Second 'microphone'
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
@@ -303,10 +304,10 @@ void main(void)
 		//	mean2.imag += (X2_ptr + N2*m + k)->cart->imag;
 		
 		}
-		mean2.real = mean2.real/(float)TIME_BLOCKS; 
-		mean2.imag = mean2.imag/(float)TIME_BLOCKS; 
-		mean1.real = mean1.real/(float)TIME_BLOCKS; 
-		mean1.imag = mean1.imag/(float)TIME_BLOCKS; 
+		mean2.real = mean2.real * inv_timeblocks; 
+		mean2.imag = mean2.imag * inv_timeblocks; 
+		mean1.real = mean1.real * inv_timeblocks; 
+		mean1.imag = mean1.imag * inv_timeblocks; 
 	
 		// Initialise covariance matrix for the current frequency bin
 		Rxx[0][0].real = 0.0;
@@ -332,43 +333,74 @@ void main(void)
 		for(m=0;m<TIME_BLOCKS;m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
 			index = N*m + k;
-			temp[0].real = 0.0;
-			temp[0].imag = 0.0;
-			temp[1].real = 0.0;
-			temp[1].imag = 0.0;
-			temp[0].real = X[CH1 + index].cart.real - mean1.real; // N2 as half the FFT data is thrown away (and the num of time blocks has doubled)
-			temp[0].imag = X[CH1 + index].cart.imag - mean1.imag;
-			temp[1].real = X[CH2 + index].cart.real - mean2.real;
-			temp[1].imag = X[CH2 + index].cart.imag - mean2.imag;
+			temp_dbl[0].real = 0.0;
+			temp_dbl[0].imag = 0.0;
+			temp_dbl[1].real = 0.0;
+			temp_dbl[1].imag = 0.0;
+			temp_dbl[0].real = X[CH1 + index].cart.real - mean1.real; // N2 as half the FFT data is thrown away (and the num of time blocks has doubled)
+			temp_dbl[0].imag = X[CH1 + index].cart.imag - mean1.imag;
+			temp_dbl[1].real = X[CH2 + index].cart.real - mean2.real;
+			temp_dbl[1].imag = X[CH2 + index].cart.imag - mean2.imag;
 			
-			dbl_conver = cmplx_mult(temp[0], conj(temp[0]));// Take the conjugate here as cov(X) = XX^H / N when complex
+			dbl_conver = cmplx_mult_dbl(temp_dbl[0], conj_dbl(temp_dbl[0]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][0].real += (double)dbl_conver.real;
 			Rxx_dbl[0][0].imag += (double)dbl_conver.imag;
 			
 			
-			dbl_conver = cmplx_mult(temp[0], conj(temp[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
+			dbl_conver = cmplx_mult_dbl(temp_dbl[0], conj_dbl(temp_dbl[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][1].real += (double)dbl_conver.real;
 			Rxx_dbl[0][1].imag += (double)dbl_conver.imag;
 			
-			dbl_conver = cmplx_mult(temp[1], conj(temp[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
+			dbl_conver = cmplx_mult_dbl(temp_dbl[1], conj_dbl(temp_dbl[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[1][1].real += (double)dbl_conver.real;
 			Rxx_dbl[1][1].imag += (double)dbl_conver.imag;
 		}
 			
-		Rxx[0][0].real = (float)(Rxx_dbl[0][0].real / (float)TIME_BLOCKS);	
-		Rxx[0][0].imag = (float)(Rxx_dbl[0][0].imag / (float)TIME_BLOCKS);	
-		Rxx[0][1].real = (float)(Rxx_dbl[0][1].real / (float)TIME_BLOCKS);
-		Rxx[0][1].imag = (float)(Rxx_dbl[0][1].imag / (float)TIME_BLOCKS);	
-		Rxx[1][1].real = (float)(Rxx_dbl[1][1].real / (float)TIME_BLOCKS);
-		Rxx[1][1].imag = (float)(Rxx_dbl[1][1].imag / (float)TIME_BLOCKS);	
+		Rxx_dbl[0][0].real = Rxx_dbl[0][0].real * (double)inv_timeblocks;	
+		Rxx_dbl[0][0].imag = Rxx_dbl[0][0].imag * (double)inv_timeblocks;	
+		Rxx_dbl[0][1].real = Rxx_dbl[0][1].real * (double)inv_timeblocks;
+		Rxx_dbl[0][1].imag = Rxx_dbl[0][1].imag * (double)inv_timeblocks;	
+		Rxx_dbl[1][1].real = Rxx_dbl[1][1].real * (double)inv_timeblocks;
+		Rxx_dbl[1][1].imag = Rxx_dbl[1][1].imag * (double)inv_timeblocks;	
 	
 	
 	
-		Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
-		Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
+		//Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
+		//Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
 		
-		eig((&Rxx[0][0]), d, (&E[0][0]));
-	
+		
+		Rxx_dbl[1][0] = Rxx_dbl[0][1]; // Covariance matrix is symetrical
+		Rxx_dbl[1][0].imag = Rxx_dbl[1][0].imag*(-1); 
+		
+		eig_dbl(&Rxx_dbl[0][0], d_dbl, &E_dbl[0][0]);
+		
+		d[0].real = (float)d_dbl[0].real;
+		d[0].imag = (float)d_dbl[0].imag;
+		d[1].real = (float)d_dbl[1].real;
+		d[1].imag = (float)d_dbl[1].imag;
+		E[0][0].real = (float)E_dbl[0][0].real;
+		E[0][0].imag = (float)E_dbl[0][0].imag;
+		E[0][1].real = (float)E_dbl[0][1].real;
+		E[0][1].imag = (float)E_dbl[0][1].imag;
+		E[1][0].real = (float)E_dbl[1][0].real;
+		E[1][0].imag = (float)E_dbl[1][0].imag;
+		E[1][1].real = (float)E_dbl[1][1].real;
+		E[1][1].imag = (float)E_dbl[1][1].imag;
+
+		
+		// Fix scaling of the eigenvectors at first freq bin (always seems to be wrong because of eigenvectors)
+		if((k==0) || (k==(N-1)))
+		{
+			E[0][0].real = E[0][0].real * -1;
+			E[0][0].imag = E[0][0].imag * -1;
+			E[0][1].real = E[0][1].real * -1;
+			E[0][1].imag = E[0][1].imag * -1;
+			E[1][0].imag = E[1][0].imag * -1;
+			E[1][0].real = E[1][0].real * -1;
+			E[1][1].imag = E[1][1].imag * -1;
+			E[1][1].real = E[1][1].real * -1;
+			E[0][0].imag = E[0][0].imag * -1;
+		}
 			
 		if(d[1].real>d[0].real)// This has replaced the sort function
 		{// Sort in decending order
@@ -381,7 +413,7 @@ void main(void)
 			d[0].imag = d[1].imag;
 			d[1].imag = temp[0].imag;
 			// Swap the eigenvectors
-			temp[0].real = E[0][1].real;
+			temp[0].real = E[0][1].real; // 'save' the second column
 			temp[0].imag = E[0][1].imag;
 			temp[1].real = E[1][1].real;
 			temp[1].imag = E[1][1].imag;
@@ -417,38 +449,15 @@ void main(void)
 //		D[1] = FastInvSqrt(d[1].real);
 		D[0] = rsqrtf(d[0].real);
 		D[1] = rsqrtf(d[1].real);
-	
-	
-		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - note D is real
-	/*	Q_temp[4*k + 0].real = (double)D[0] * (double)E[0][0].real; 
-		Q_temp[4*k + 0].imag = (double)D[0] * (double)E[0][0].imag * (-1);// Hermitian transpose
-		Q_temp[4*k + 1].real = (double)D[0] * (double)E[1][0].real; 
-		Q_temp[4*k + 1].imag = (double)D[0] * (double)E[1][0].imag * (-1);
-		Q_temp[4*k + 2].real = (double)D[1] * (double)E[0][1].real; 
-		Q_temp[4*k + 2].imag = (double)D[1] * (double)E[0][1].imag * (-1);
-		Q_temp[4*k + 3].real = (double)D[1] * (double)E[1][1].real; 
-		Q_temp[4*k + 3].imag = (double)D[1] * (double)E[1][1].imag * (-1);
-		
-		
-		Q[4*k + 0].real = (float)Q_temp[4*k + 0].real;
-		Q[4*k + 0].imag = (float)Q_temp[4*k + 0].imag;
-		Q[4*k + 1].real = (float)Q_temp[4*k + 1].real;
-		Q[4*k + 1].imag = (float)Q_temp[4*k + 1].imag;
-		Q[4*k + 2].real = (float)Q_temp[4*k + 2].real;
-		Q[4*k + 2].imag = (float)Q_temp[4*k + 2].imag;
-		Q[4*k + 3].real = (float)Q_temp[4*k + 3].real;
-		Q[4*k + 3].imag = (float)Q_temp[4*k + 3].imag;
-			*/
-			
-			
-		Q[4*k + 0].real = D[0] * E[0][0].real; 
-		Q[4*k + 0].imag = D[0] * E[0][0].imag * (-1);// Hermitian transpose
-		Q[4*k + 1].real = D[0] * E[1][0].real; 
-		Q[4*k + 1].imag = D[0] * E[1][0].imag * (-1);
-		Q[4*k + 2].real = D[1] * E[0][1].real; 
-		Q[4*k + 2].imag = D[1] * E[0][1].imag * (-1);
-		Q[4*k + 3].real = D[1] * E[1][1].real; 
-		Q[4*k + 3].imag = D[1] * E[1][1].imag * (-1);
+				
+		Q[4*k + 0].real = D[0] * (float)E[0][0].real; 
+		Q[4*k + 0].imag = D[0] * (float)E[0][0].imag * (-1);// Hermitian transpose
+		Q[4*k + 1].real = D[0] * (float)E[1][0].real; 
+		Q[4*k + 1].imag = D[0] * (float)E[1][0].imag * (-1);
+		Q[4*k + 2].real = D[1] * (float)E[0][1].real; 
+		Q[4*k + 2].imag = D[1] * (float)E[0][1].imag * (-1);
+		Q[4*k + 3].real = D[1] * (float)E[1][1].real; 
+		Q[4*k + 3].imag = D[1] * (float)E[1][1].imag * (-1);
 			
 			
 		// Remove mean from X - mean values are worked out 
@@ -500,6 +509,7 @@ void main(void)
 		
 		
 		inv_2x2(&W_temp[0], &W_inv[0]);
+		
 		// 2*2 matrix complex multiplication where the non-diagonal elements are zero - (discard W_inv[1] and W_inv[2])
 		Wp[index + 0] = cmplx_mult(W_inv[0], W_temp[0]);
 		Wp[index + 1] = cmplx_mult(W_inv[0], W_temp[1]); 
@@ -508,39 +518,7 @@ void main(void)
 	}	
 	DSK6713_LED_on(3);	
 	
-	
-	// Now recover original sources in the frequency by multiplying by the inverse of the whitening matrix
-/*	for(k=0;k<N;k++)
-	{	
-		inv_2x2(&Q[4*k], &Q_inv[0]); // Work out the inverse of Q (whitening matrix at each frequency bin)
 		
-		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
-		{
-			index = N*m + k;
-			cmplx_mult_add(Q_inv[0], X[CH1 + index].cart, Q_inv[1], X[CH2 + index].cart, &temp[0].real, &temp[0].imag);
-			cmplx_mult_add(Q_inv[2], X[CH1 + index].cart, Q_inv[3], X[CH2 + index].cart, &temp[1].real, &temp[1].imag);
-			
-			X[CH1 + index].cart = temp[0]; 
-			X[CH2 + index].cart = temp[1];
-		}
-	}*/	
-	
-	
-	// Unmixing filter multiplied the estimated source @ each freq needs to go here!
-/*	for(k=0;k<N;k++)
-	{		
-		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix
-		{
-			index = N*m + k;
-			cmplx_mult_add(Wp[0+index], X[CH1 + index].cart, Wp[1+index], X[CH2 + index].cart, &temp[0].real, &temp[0].imag);
-			cmplx_mult_add(Wp[2+index], X[CH1 + index].cart, Wp[3+index], X[CH2 + index].cart, &temp[1].real, &temp[1].imag);
-			
-			S[CH1 + index] = temp[0]; 
-			S[CH2 + index] = temp[1];
-		}
-	}*/	
-	
-	
 	// Now recover original sources in the frequency by multiplying by the scaled unmixing matrix
 	for(k=0;k<N;k++)
 	{		

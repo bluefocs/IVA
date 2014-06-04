@@ -68,7 +68,103 @@ void inv_2x2(COMPLEX *A, COMPLEX *out)
 	*/
 }
 
-
+void eig_dbl(COMPLEX_DBL *M, COMPLEX_DBL *eigvals, COMPLEX_DBL *eigvecs)
+{
+	// Calculates the eigenvalues and eigenvectors of 2*2 matrix with double precision throughout!
+	// Using the equations here: http://www.math.harvard.edu/archive/21b_fall_04/exhibits/2dmatrices/index.html
+	// Accepts complex and real numbers, ie. complex part is set to zero.
+	
+	double Dr = 0.0, Di = 0.0; // Real and imaginary parts as doubles
+	double Tr = 0.0, Ti = 0.0; // .. necessary to have double precision here.
+	
+	double norm_fact, arg;
+	double r=0.0; // Double so that it doesn't go to inf
+	double realpart=0.0, imagpart=0.0;
+	
+	/* Work out determinate (2x2) */
+	Dr = ((M[0].real)*(M[3].real)) - ((M[0].imag)*(M[3].imag)) - ((M[1].real)*(M[2].real)) + ((M[1].imag)*(M[2].imag));  
+	Di = ((M[0].real)*(M[3].imag)) + ((M[0].imag)*(M[3].real)) - ((M[2].real)*(M[1].imag)) - ((M[2].imag)*(M[1].real));  
+	
+	Tr = M[0].real + M[3].real; //Trace real part
+	Ti = M[0].imag + M[3].imag;
+	
+// for the eigenvalues to be found need to express the bit under the square
+// root as (stuff) + j(stuff) so that it can be rewritten sqrt(r)(cos(0.5*arg) + sin(0.5*arg))
+	
+//	realpart = (float)((T.real*T.real)-(T.imag*T.imag))/4.0;
+//	realpart -= D.real; 
+//	imagpart = (0.5*T.imag*T.real) - D.imag;
+	
+	realpart = (float)((Tr*Tr)-(Ti*Ti))/4.0;
+	realpart -= Dr; 
+	imagpart = (0.5*Ti*Tr) - Di;
+	
+	
+	arg = atan(imagpart/realpart);
+	r = (realpart*realpart) + (imagpart*imagpart);
+	//arg = tan((0.5*T.imag*T.real - D.imag)/((pow(T.real,2)-pow(T.imag,2))/4 - D.real));
+	//r = pow((pow(T.real,2)-pow(T.imag,2))/4 - D.real,2) + pow((0.5*T.imag*T.real - D.imag),2);
+	//r = sqrt((double)r);
+	//r = pow((double)r, 0.5);
+	r = sqrt(r);
+	eigvals[0].real = (Tr/2.0) + sqrt(r)*cos(0.5*arg);
+	eigvals[0].imag = (Ti/2.0) + sqrt(r)*sin(0.5*arg);
+	eigvals[1].real = (Tr/2.0) - sqrt(r)*cos(0.5*arg);
+	eigvals[1].imag = (Ti/2.0) - sqrt(r)*sin(0.5*arg);
+///	eigvals[0] = (T/2) + sqrt((pow(T,2)/4) - D);//Real case
+//	eigvals[1] = (T/2) - sqrt((pow(T,2)/4) - D);//Real case
+	
+	
+	if((M[2].real==0.0) && (M[1].real==0.0) && (M[2].imag==0.0) && (M[1].imag==0.0))
+	{
+		eigvecs[0].real=1; // 2*2 identity matrix
+		eigvecs[0].imag=0;
+		eigvecs[1].real=0;
+		eigvecs[1].imag=0;
+		eigvecs[2].real=0;
+		eigvecs[2].imag=0;
+		eigvecs[3].real=1;
+		eigvecs[3].imag=0;
+	}
+	else //if((M[2].real!=0.0) && (M[2].imag!=0.0))// if c is not zero
+	{
+		
+		eigvecs[0].real = eigvals[0].real-M[3].real;
+		eigvecs[0].imag = eigvals[0].imag-M[3].imag;
+		eigvecs[1].real = eigvals[1].real-M[3].real;
+		eigvecs[1].imag = eigvals[1].imag-M[3].imag;
+		eigvecs[2].real = M[2].real;//c
+		eigvecs[2].imag = M[2].imag;//c
+		eigvecs[3].real = M[2].real;//c
+		eigvecs[3].imag = M[2].imag;//c
+	}
+/*	else // if b!=0
+	{
+		eigvecs[0].real = M[1].real;//b
+		eigvecs[0].imag = M[1].imag;//b
+		eigvecs[1].real = M[1].real;//b
+		eigvecs[1].imag = M[1].imag;//b
+		eigvecs[2].real = eigvals[0].real-M[0].real;
+		eigvecs[2].imag = eigvals[0].imag-M[0].imag;
+		eigvecs[3].real = eigvals[1].real-M[0].real;
+		eigvecs[3].imag = eigvals[1].imag-M[0].imag;
+	}*/
+		
+	//Normalise - may not be as accurate as the above method
+	norm_fact = mag_dbl(eigvecs[0])*mag_dbl(eigvecs[0]) + mag_dbl(eigvecs[2])*mag_dbl(eigvecs[2]);
+	norm_fact = rsqrtf( norm_fact );
+	eigvecs[0].real = eigvecs[0].real * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[0].imag = eigvecs[0].imag * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[2].real = eigvecs[2].real * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[2].imag = eigvecs[2].imag * norm_fact; //FastInvSqrt( norm_fact );
+	
+	norm_fact = mag_dbl(eigvecs[1])*mag_dbl(eigvecs[1]) + mag_dbl(eigvecs[3])*mag_dbl(eigvecs[3]);
+	norm_fact = rsqrtf( norm_fact );
+	eigvecs[1].real = eigvecs[1].real * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[1].imag = eigvecs[1].imag * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[3].real = eigvecs[3].real * norm_fact; //FastInvSqrt( norm_fact );
+	eigvecs[3].imag = eigvecs[3].imag * norm_fact; //FastInvSqrt( norm_fact );
+}
 void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 {
 	// Calculates the eigenvalues and eigenvectors of 2*2 matrix
@@ -130,8 +226,9 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 		eigvecs[3].real=1;
 		eigvecs[3].imag=0;
 	}
-	else if((M[2].real!=0.0) && (M[2].imag!=0.0))// if c is not zero
+	else //if((M[2].real!=0.0) && (M[2].imag!=0.0))// if c is not zero
 	{
+		
 		eigvecs[0].real = eigvals[0].real-M[3].real;
 		eigvecs[0].imag = eigvals[0].imag-M[3].imag;
 		eigvecs[1].real = eigvals[1].real-M[3].real;
@@ -141,7 +238,7 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 		eigvecs[3].real = M[2].real;//c
 		eigvecs[3].imag = M[2].imag;//c
 	}
-	else // if b!=0
+/*	else // if b!=0
 	{
 		eigvecs[0].real = M[1].real;//b
 		eigvecs[0].imag = M[1].imag;//b
@@ -151,7 +248,7 @@ void eig(COMPLEX *M, COMPLEX *eigvals, COMPLEX *eigvecs)
 		eigvecs[2].imag = eigvals[0].imag-M[0].imag;
 		eigvecs[3].real = eigvals[1].real-M[0].real;
 		eigvecs[3].imag = eigvals[1].imag-M[0].imag;
-	}
+	}*/
 	
 	/*
 	//Normalise
@@ -186,6 +283,10 @@ float mag(COMPLEX x)
 {
 	return sqrt(x.real*x.real + x.imag*x.imag);
 }
+double mag_dbl(COMPLEX_DBL x)
+{
+	return sqrt(x.real*x.real + x.imag*x.imag);
+}
 float arg(COMPLEX x)
 {
 	return atan(x.imag/x.real);
@@ -197,10 +298,31 @@ COMPLEX conj(COMPLEX z)
 	out.imag = (-1)*z.imag;
 	return out;
 }
+COMPLEX_DBL conj_dbl(COMPLEX_DBL z)
+{
+	COMPLEX_DBL out;
+	out.real = z.real;
+	out.imag = (-1)*z.imag;
+	return out;
+}
 COMPLEX cmplx_mult(COMPLEX z1, COMPLEX z2)
 {
 	COMPLEX out;
 	float aminusb;
+	//aminusb = z1.real + z2.real;// Why on earth was I doing this????
+	aminusb = (z1.real - z1.imag) * z2.imag;
+	// Uses an identity to reduce the number of multiplications
+	out.real = z1.real*(z2.real - z2.imag) + aminusb;
+	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;
+	//out.real = z1.real*z2.real - (z1.imag*z2.imag);
+	//out.imag = z1.real*z2.imag + (z1.imag*z2.real);
+	
+	return out;
+}
+COMPLEX_DBL cmplx_mult_dbl(COMPLEX_DBL z1, COMPLEX_DBL z2)
+{
+	COMPLEX_DBL out;
+	double aminusb;
 	//aminusb = z1.real + z2.real;// Why on earth was I doing this????
 	aminusb = (z1.real - z1.imag) * z2.imag;
 	// Uses an identity to reduce the number of multiplications

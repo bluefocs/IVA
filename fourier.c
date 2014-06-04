@@ -136,7 +136,10 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		for(k=0; k<2*(nfreq - 1); k++) // Overlap add method
 		{
 			xtime[n+k] += buffer[2*k] * hamming[k]; // Only bother with the real part
-			scale[n+k] += hamming[k] * hamming[k]; // Work out weird scally factor thing
+			//if(n<time_len-overlap)
+			//{
+				scale[n+k] += hamming[k] * hamming[k]; // Work out weird scally factor thing
+			//}
 		}			
 	}
 /*	for(k=0; k<2*(nfreq - 1); k++) // Work out last little bit of the scally thing

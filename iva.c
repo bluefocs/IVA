@@ -24,10 +24,10 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	//double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj[600], dlw=0.0, tol = 0.000001, comparison=0.0;
 	
 	// Initialise Ssq
-/*	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
+	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
 	{
 		Ssq[m]=0.0;
-	}*/
+	}
 	
 	//#pragma MUST_ITERATE(600,600)
 	for(iter=0;iter<maxiter;iter++)
