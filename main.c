@@ -238,13 +238,13 @@ void main(void)
 		m++;
 	}
 	*/
-	stft(&X1_ptr->cart, x, N, 40960, N_INT/2); // First 'microphone'
-	stft(&X2_ptr->cart, &x[CH2_T], N, 40960, N_INT/2); // Second 'microphone'
+	stft(&X1_ptr->cart, x, N, 40960, 3*N_INT/4); // First 'microphone'
+	stft(&X2_ptr->cart, &x[CH2_T], N, 40960, 3*N_INT/4); // Second 'microphone'
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-	istft(&X1_ptr->cart, &x[CH1], N, 40960, N_INT/2);	// This is here to test the function
+	//istft(&X1_ptr->cart, &x[CH1], N, 40960, 3*N_INT/4);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
@@ -535,8 +535,8 @@ void main(void)
 	
 	
 	
-	istft(S1_ptr, &x[CH1], N, 40960, N_INT/2);// Resynthesise the first source
-	istft(S2_ptr, &x[CH2], N, 40960, N_INT/2);// Resynthesise the second source
+	istft(S1_ptr, &x[CH1], N, 40960, 3*N_INT/4);// Resynthesise the first source
+	istft(S2_ptr, &x[CH2], N, 40960, 3*N_INT/4);// Resynthesise the second source
 		
 	while(1)
 	{
