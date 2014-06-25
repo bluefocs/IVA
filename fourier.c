@@ -15,7 +15,7 @@
 */
 #include "definitions.h"
 #include "fourier.h"
-#include "hamming.h"
+#include "window.h"
 #include "twiddles.h"
 #include "DSPF_sp_icfftr2_dif.h"
 #include "DSPF_sp_cfftr2_dit.h"
@@ -54,7 +54,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	// nfreq = number of frequency bins 
 	// time_len = number of samples in the original time domain signal.
 
-	unsigned int prevGIE; // Previous global interrupt flag state
+//	unsigned int prevGIE; // Previous global interrupt flag state
 	unsigned int n=0,k=0, start=4; 
 	unsigned int block_ind=0, step = N_INT;// Block index
 	const float fftlen_inv = 1/(float)N_INT;
@@ -99,7 +99,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		scale[k]=0.0;
 	}
 	
-	for(n=0;n<time_len;n+=step)// Should overlap=nfreq?
+	for(n=0; n<(time_len-(nfreq-1)*2); n+=step)// Should overlap=nfreq?
 	{
 		for(k=0; k<start*3; k++)//
 		{
@@ -138,10 +138,10 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
  		
 		for(k=0; k<2*(nfreq - 1); k++) // Overlap add method
 		{
-			xtime[n+k] += buffer[2*k] * hamming[k]; // Only bother with the real part
+			xtime[n+k] += buffer[2*k] * hanning[k]; // Only bother with the real part
 			//if(n<time_len-overlap)
 			//{
-				scale[n+k] += hamming[k] * hamming[k]; // Work out weird scally factor thing
+				scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
 			//}
 		}			
 	}
@@ -165,11 +165,14 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 
 void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 {
-	// Assumes hamming window
+	/* 
+	*
+	* Uses hanning window, divided by length then multiplied by 2.
+	*/
 	unsigned int prevGIE; // Previous global interrupt flag state
 	unsigned int n=0, m=0, step=0;
 	unsigned short k=0;
-	
+	//unsigned int no_time_frames <--- was going to be used to introduce zero padding
 	step = 2*(nfreq-1) - overlap;
 	
 	for(n=0;n<8;n++)
@@ -188,7 +191,7 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
 		for(k=0;k<N_INT;k++)
 		{
-			buffer[2 * k] = hamming[k] * xtime[n+k];
+			buffer[2 * k] = hanning[k] * xtime[n+k];
 			buffer[2*k+1]= 0.0;
 		}
 		// BUT! memcpy seems to be more efficient - this way you can't use the window

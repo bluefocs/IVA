@@ -14,7 +14,7 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	const float recip_TIME_BLOCKS = 1.0 / (float)TIME_BLOCKS;
 	unsigned short k=0, m=0, mat_k=0, iter=0;
 	unsigned int ch1_i=0, ch2_i=0;
-	const unsigned short maxiter=600;
+	const unsigned short maxiter=500;
 	const float mu=0.1;
 	COMPLEX detWp;
 	

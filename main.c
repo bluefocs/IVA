@@ -60,7 +60,7 @@
 #include "iva.h"
 #include "definitions.h"
 #include "twiddles.h"
-#include "hamming.h"
+//#include "window.h"
 #include "fourier.h"
 #include "c67fastMath.h"
 
