@@ -72,7 +72,7 @@ Uint16 inputsource=DSK6713_AIC23_INPUT_LINE; // select input source
 union complexdata X[ NSOURCES * STFT_SIZE ]; // Used to store time data, freq domain data and whitened data
 union complexdata X_org[NSOURCES*STFT_SIZE]; // Original X data for to be separated at the end
 float x[NSOURCES * TIME_BLOCKS_INT * N_INT];
-float x_rec[TIME_BLOCKS_INT * N_INT];
+//float x_rec[TIME_BLOCKS_INT * N_INT];
 unsigned short buffercount = 0;            //number of new input samples in buffer 
 static unsigned short t = 0;
 complexpair *X_ptr[TIME_BLOCKS];
@@ -94,7 +94,7 @@ COMPLEX Wp[N*4];
 #pragma DATA_SECTION(buffer1,".EXT_RAM")
 #pragma DATA_SECTION(buffer2,".EXT_RAM")
 #pragma DATA_SECTION(x,".EXT_RAM")
-#pragma DATA_SECTION(x_rec,".EXT_RAM")
+//#pragma DATA_SECTION(x_rec,".EXT_RAM")
 //#pragma DATA_SECTION(DSPF_sp_icfftr2_dif,".EXT_RAM")
 
 // Function prototypes for any assembly routines
@@ -389,7 +389,7 @@ void main(void)
 
 		
 		// Fix scaling of the eigenvectors at first freq bin (always seems to be wrong because of eigenvectors)
-		if((k==0) || (k==(N-1)))
+	/*	if((k==0) || (k==(N-1)))
 		{
 			E[0][0].real = E[0][0].real * -1;
 			E[0][0].imag = E[0][0].imag * -1;
@@ -400,7 +400,7 @@ void main(void)
 			E[1][1].imag = E[1][1].imag * -1;
 			E[1][1].real = E[1][1].real * -1;
 			E[0][0].imag = E[0][0].imag * -1;
-		}
+		}*/
 			
 		if(d[1].real>d[0].real)// This has replaced the sort function
 		{// Sort in decending order

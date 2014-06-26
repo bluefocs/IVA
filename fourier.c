@@ -199,7 +199,8 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		
 		// Calculate 1024 point FFT on current buffers
 		//prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		//DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		DSPF_sp_cfftr2_dit(buffer, w, N_INT);
 		bit_rev(buffer, N_INT); // Bit reversal goes afterwards for the forward fft
 		//IRQ_globalRestore(prevGIE);
 		
