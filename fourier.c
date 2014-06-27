@@ -19,6 +19,7 @@
 #include "twiddles.h"
 #include "DSPF_sp_icfftr2_dif.h"
 #include "DSPF_sp_cfftr2_dit.h"
+#include "DSPF_dp_cfftr2.h"
 #include "csl_irq.h"
 //#include "DSPF_sp_bitrev_cplx.h"
 #include <math.h>
@@ -27,6 +28,13 @@
 float buffer[(2*N_INT) + 8];
 #pragma DATA_SECTION(buffer,".EXT_RAM")
 
+#pragma DATA_ALIGN(buffer_dbl,16)
+double buffer_dbl[(2*N_INT) + 8];
+#pragma DATA_SECTION(buffer_dbl,".EXT_RAM")
+
+#pragma DATA_ALIGN(w_dbl,16)
+double w_dbl[N_INT];
+#pragma DATA_SECTION(w_dbl,".EXT_RAM")
 
 float scale[CH2_T];
 #pragma DATA_SECTION(scale,".EXT_RAM")
@@ -172,6 +180,7 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	unsigned int prevGIE; // Previous global interrupt flag state
 	unsigned int n=0, m=0, step=0;
 	unsigned short k=0;
+	
 	//unsigned int no_time_frames <--- was going to be used to introduce zero padding
 	step = 2*(nfreq-1) - overlap;
 	
@@ -182,7 +191,13 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	// Set up twiddle factors to be sure that they work with the TI function
 	gen_w_r2(w, N_INT);
 	
-	bit_rev(w, N_INT>>1);/// Offending line ??? -yes!
+	bit_rev(w, N_INT>>1);/// SINGLE (FLOAT) Offending line ??? -yes!
+
+	
+	for(k=0;k<N_INT;k++)
+	{
+		w_dbl[k] = (double)w[k];
+	}
 		
 	m=0;//Important!
 	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=step) // N/2 for 50% overlapping 
@@ -193,17 +208,26 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		{
 			buffer[2 * k] = hanning[k] * xtime[n+k];
 			buffer[2*k+1]= 0.0;
+			//buffer_dbl[2 * k] = (double)hanning[k] * (double)xtime[n+k];
+			//buffer_dbl[2*k+1]= 0.0;
 		}
 		// BUT! memcpy seems to be more efficient - this way you can't use the window
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
 		// Calculate 1024 point FFT on current buffers
 		//prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		//DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
-		DSPF_sp_cfftr2_dit(buffer, w, N_INT);
+		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		//DSPF_sp_cfftr2_dit(buffer, w, N_INT); // Pre-compiled version of above function 
+		//DSPF_dp_cfftr2(N_INT, buffer_dbl, w_dbl, 1);// Double precision experiment - didn't work!
 		bit_rev(buffer, N_INT); // Bit reversal goes afterwards for the forward fft
 		//IRQ_globalRestore(prevGIE);
 		
+		
+		/*for(k=0;k<N_INT;k++)// These lines were for the double test
+		{
+			buffer[2 * k] = (float)buffer_dbl[2 * k];
+			buffer[2*k+1] = (float)buffer_dbl[2*k+1];
+		}*/
 		
 		memcpy(&X[m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
 		m += nfreq;
