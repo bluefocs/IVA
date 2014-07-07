@@ -175,6 +175,8 @@ void main(void)
 	float D[2] = {0.0, 0.0};
 	const float inv_timeblocks = 1/(float)TIME_BLOCKS;
 	
+	COMPLEX_DBL W_temp_dbl[4], X_temp[2];
+	
 	// Test variables
 /*	float test_r=0.0,test_i=0.0;
 	COMPLEX c,e;
@@ -525,11 +527,33 @@ void main(void)
 		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix (in fact the multication is W*X at each freq bin)
 		{
 			index = N*m + k;
-			cmplx_mult_add(Wp[4*k + 0], X_org[CH1 + index].cart, Wp[4*k + 1], X_org[CH2 + index].cart, &temp[0].real, &temp[0].imag);
-			cmplx_mult_add(Wp[4*k + 2], X_org[CH1 + index].cart, Wp[4*k + 3], X_org[CH2 + index].cart, &temp[1].real, &temp[1].imag);
+			//cmplx_mult_add(Wp[4*k + 0], X_org[CH1 + index].cart, Wp[4*k + 1], X_org[CH2 + index].cart, &temp[0].real, &temp[0].imag);
+			//cmplx_mult_add(Wp[4*k + 2], X_org[CH1 + index].cart, Wp[4*k + 3], X_org[CH2 + index].cart, &temp[1].real, &temp[1].imag);
 			
-			S[CH1 + index] = temp[0]; 
-			S[CH2 + index] = temp[1];
+			
+			W_temp_dbl[0].real = (double)(Wp[4*k + 0].real);
+			W_temp_dbl[0].imag = (double)Wp[4*k + 0].imag;
+			W_temp_dbl[1].real = (double)Wp[4*k + 1].real;
+			W_temp_dbl[1].imag = (double)Wp[4*k + 1].imag;
+			W_temp_dbl[2].real = (double)Wp[4*k + 2].real;
+			W_temp_dbl[2].imag = (double)Wp[4*k + 2].imag;
+			W_temp_dbl[3].real = (double)Wp[4*k + 3].real;
+			W_temp_dbl[3].imag = (double)Wp[4*k + 3].imag;
+			X_temp[0].real = (double)X_org[CH1 + index].cart.real;
+			X_temp[0].imag = (double)X_org[CH1 + index].cart.imag;
+			X_temp[1].real = (double)X_org[CH2 + index].cart.real;
+			X_temp[1].imag = (double)X_org[CH2 + index].cart.imag;
+			
+			/* Seems that the filtering effect is inftroduced at this point due to the four complex multiplications above */
+			temp_dbl[0] =cmplx_mult_dbl(W_temp_dbl[0], X_temp[0]);
+			temp_dbl[1] =cmplx_mult_dbl(W_temp_dbl[1], X_temp[1]);
+			S[CH1 + index].real = temp_dbl[0].real + temp_dbl[1].real;
+			S[CH1 + index].imag = temp_dbl[0].imag + temp_dbl[1].imag;
+			 
+			temp_dbl[0] =cmplx_mult_dbl(W_temp_dbl[2], X_temp[0]);
+			temp_dbl[1] =cmplx_mult_dbl(W_temp_dbl[3], X_temp[1]);			
+			S[CH2 + index].real = temp_dbl[0].real + temp_dbl[1].real;
+			S[CH2 + index].imag = temp_dbl[0].imag + temp_dbl[1].imag;
 		}
 	}	
 	
