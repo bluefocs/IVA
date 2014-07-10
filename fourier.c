@@ -28,6 +28,7 @@
 float buffer[(2*N_INT) + 8];
 #pragma DATA_SECTION(buffer,".EXT_RAM")
 
+/*
 #pragma DATA_ALIGN(buffer_dbl,16)
 double buffer_dbl[(2*N_INT) + 8];
 #pragma DATA_SECTION(buffer_dbl,".EXT_RAM")
@@ -35,7 +36,7 @@ double buffer_dbl[(2*N_INT) + 8];
 #pragma DATA_ALIGN(w_dbl,16)
 double w_dbl[N_INT];
 #pragma DATA_SECTION(w_dbl,".EXT_RAM")
-
+*/
 float scale[CH2_T];
 #pragma DATA_SECTION(scale,".EXT_RAM")
 
@@ -53,7 +54,7 @@ void gen_w_r2(float* w, int n)
  		}
  	}
 }
-
+/*
 void gen_w_r2_dbl(double* w, int n)
 {
 	int i, j=1;
@@ -95,7 +96,7 @@ void bit_rev_dbl(double* x, int n)
 		}
 	}
 }
-
+*/
 
 void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 {
@@ -181,21 +182,26 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		//IRQ_globalRestore(prevGIE);// Restore previous global interrupt state
 		
 		
-		
-		for(k=0; k<2*(nfreq - 1); k++)// Divide by the length as it's not done by the ifft function above
- 		{
- 			buffer[2*k]=buffer[2*k]*fftlen_inv;
- 		}
+
  		
 		for(k=0; k<2*(nfreq - 1); k++) // Overlap add method
 		{
-			xtime[n+k] += buffer[2*k] * hanning[k]; // Only bother with the real part
-			//if(n<time_len-overlap)
-			//{
-				scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
-			//}
+			xtime[n+k] += buffer[2*k] * hanning[k] * fftlen_inv; // Only bother with the real part
+			
+			scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
 		}			
 	}
+	
+	
+	
+	for(k=0; k<2*(nfreq - 1); k++) // Overlap add method
+	{
+		xtime[n+k] += buffer[2*k] * hanning[k]; // Only bother with the real part		
+		scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
+	}
+	
+	
+	
 /*	for(k=0; k<2*(nfreq - 1); k++) // Work out last little bit of the scally thing
 	{
 		scale[n+k] += hamming[k] * hamming[k]; // Only bother with the real part
@@ -207,6 +213,7 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	}
 
 	scale = overlap/w0;*/
+	scale[0]=scale[1];// Ensures that the first value isn't 0 <- bit of a bodge
 	for(k=0; k<time_len; k++) // Calculate scaling factor
 	{
 		xtime[k] = xtime[k] / scale[k];
@@ -232,9 +239,9 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		buffer[(2*N_INT) + 8 -1 - n] = 0.0;
 	}
 	// Set up twiddle factors to be sure that they work with the TI function
-	gen_w_r2_dbl(w_dbl, N_INT);
-	
-	//bit_rev(w, N_INT>>1);/// SINGLE (FLOAT) Offending line ??? -yes!
+	//gen_w_r2_dbl(w_dbl, N_INT);
+	gen_w_r2(w, N_INT);
+	bit_rev(w, N_INT>>1);/// SINGLE (FLOAT) Offending line ??? -yes!
 
 	
 /*	for(k=0;k<N_INT;k++)
@@ -251,26 +258,29 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		{
 			buffer[2 * k] = hanning[k] * xtime[n+k];
 			buffer[2*k+1]= 0.0;
-			buffer_dbl[2 * k] = (double)hanning[k] * (double)xtime[n+k];
-			buffer_dbl[2*k+1]= 0.0;
+		//	buffer_dbl[2 * k] = (double)hanning[k] * (double)xtime[n+k];
+		//	buffer_dbl[2*k+1]= 0.0;
 		}
 		// BUT! memcpy seems to be more efficient - this way you can't use the window
 		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
 		
 		// Calculate 1024 point FFT on current buffers
-		//prevGIE = IRQ_globalDisable(); // Turn off global interrupts
-		//DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		
+		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		bit_rev(buffer, N_INT);
+		
 		//DSPF_sp_cfftr2_dit(buffer, w, N_INT); // Pre-compiled version of above function 
-		DSPF_dp_cfftr2(N_INT, buffer_dbl, w_dbl, 1);// Double precision experiment - didn't work!
-		bit_rev_dbl(buffer_dbl, N_INT); // Bit reversal goes afterwards for the forward fft
-		//IRQ_globalRestore(prevGIE);
+		//DSPF_dp_cfftr2(N_INT, buffer_dbl, w_dbl, 1);// Double precision experiment - didn't work!
+		//bit_rev_dbl(buffer_dbl, N_INT); // Bit reversal goes afterwards for the forward fft
+		IRQ_globalRestore(prevGIE);
 		
-		
+		/*
 		for(k=0;k<N_INT;k++)// These lines were for the double test
 		{
 			buffer[2 * k] = (float)buffer_dbl[2 * k];
 			buffer[2*k+1] = (float)buffer_dbl[2*k+1];
-		}
+		}*/
 		
 		memcpy(&X[m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
 		m += nfreq;

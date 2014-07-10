@@ -323,14 +323,18 @@ COMPLEX_DBL cmplx_mult_dbl(COMPLEX_DBL z1, COMPLEX_DBL z2)
 {
 	COMPLEX_DBL out;
 	double aminusb;
-	//aminusb = z1.real + z2.real;// Why on earth was I doing this????
-	aminusb = (z1.real - z1.imag) * z2.imag;
-	// Uses an identity to reduce the number of multiplications
-	out.real = z1.real*(z2.real - z2.imag) + aminusb;
-	out.imag = z1.imag*(z2.real + z2.imag) + aminusb;
-	//out.real = z1.real*z2.real - (z1.imag*z2.imag);
-	//out.imag = z1.real*z2.imag + (z1.imag*z2.real);
-	
+	if ((z1.imag==0.0) && (z2.imag==0.0))// If it's real multiply as normal
+	{
+		out.real = z1.real*z2.real;
+		out.imag = 0.0;
+	}
+	else
+	{
+		aminusb = (z1.real - z1.imag) * z2.imag;
+		// Uses an identity to reduce the number of multiplications
+		out.real = z1.real*(z2.real - z2.imag) + aminusb;
+		out.imag = z1.imag*(z2.real + z2.imag) + aminusb;
+	}
 	return out;
 }
 COMPLEX cmplx_add(COMPLEX z1, COMPLEX z2)

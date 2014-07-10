@@ -558,9 +558,9 @@ void main(void)
 	}	
 	
 	
-	
-	istft(S1_ptr, &x[CH1], N, 40960, 3*N_INT/4);// Resynthesise the first source
 	istft(S2_ptr, &x[CH2], N, 40960, 3*N_INT/4);// Resynthesise the second source
+	istft(S1_ptr, &x[CH1], N, 40960, 3*N_INT/4);// Resynthesise the first source
+	
 		
 	while(1)
 	{
