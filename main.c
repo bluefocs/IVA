@@ -169,12 +169,12 @@ void main(void)
 	COMPLEX mean1, mean2, temp[2]; 
 	COMPLEX_DBL temp_dbl[2];
 	COMPLEX d[2], E[2][2], Rxx[2][2];
-	COMPLEX_DBL Rxx_dbl[2][2], E_dbl[2][2], d_dbl[2];//, Q_temp[4];
-	COMPLEX_DBL dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
+//	COMPLEX_DBL Rxx_dbl[2][2], E_dbl[2][2], d_dbl[2];//, Q_temp[4];
+//	COMPLEX_DBL dbl_conver; //dbl_conver[2] is used to typecast type of COMPLEX to COMPLEX_DBL
 	COMPLEX W_temp[4],W_inv[4];//
 	float D[2] = {0.0, 0.0};
 	const float inv_timeblocks = 1/(float)TIME_BLOCKS;
-	
+	COMPLEX temp_pca;
 	COMPLEX_DBL W_temp_dbl[4], X_temp[2];
 	
 	// Test variables
@@ -319,23 +319,14 @@ void main(void)
 		Rxx[1][0].real = 0.0;
 		Rxx[1][0].imag = 0.0;
 		Rxx[1][1].real = 0.0;
-		Rxx[1][1].imag = 0.0;
-		Rxx_dbl[0][0].real = 0.0;
-		Rxx_dbl[0][0].imag = 0.0;
-		Rxx_dbl[0][1].real = 0.0;
-		Rxx_dbl[0][1].imag = 0.0;
-		Rxx_dbl[1][0].real = 0.0;
-		Rxx_dbl[1][0].imag = 0.0;
-		Rxx_dbl[1][1].real = 0.0;
-		Rxx_dbl[1][1].imag = 0.0;
-		
+		Rxx[1][1].imag = 0.0;	
 		
 		
 		// Calculate covariance matrix
 		for(m=0;m<TIME_BLOCKS;m++)// 2 by many matrix multiplied by many by 2 matrix
 		{
 			index = N*m + k;
-			temp_dbl[0].real = 0.0;
+	/*		temp_dbl[0].real = 0.0;
 			temp_dbl[0].imag = 0.0;
 			temp_dbl[1].real = 0.0;
 			temp_dbl[1].imag = 0.0;
@@ -343,7 +334,30 @@ void main(void)
 			temp_dbl[0].imag = X[CH1 + index].cart.imag - mean1.imag;
 			temp_dbl[1].real = X[CH2 + index].cart.real - mean2.real;
 			temp_dbl[1].imag = X[CH2 + index].cart.imag - mean2.imag;
+		*/	
+			temp[0].real = 0.0;
+			temp[0].imag = 0.0;
+			temp[1].real = 0.0;
+			temp[1].imag = 0.0;
+			temp[0].real = X[CH1 + index].cart.real - mean1.real; // N2 as half the FFT data is thrown away (and the num of time blocks has doubled)
+			temp[0].imag = X[CH1 + index].cart.imag - mean1.imag;
+			temp[1].real = X[CH2 + index].cart.real - mean2.real;
+			temp[1].imag = X[CH2 + index].cart.imag - mean2.imag;
 			
+			
+			temp_pca = cmplx_mult( temp[0], conj(temp[0]) );
+			Rxx[0][0].real += temp_pca.real;
+			Rxx[0][0].imag += temp_pca.imag;
+			
+			temp_pca = cmplx_mult( temp[0], conj(temp[1]) );
+			Rxx[0][1].real += temp_pca.real;
+			Rxx[0][1].imag += temp_pca.imag;
+			
+			temp_pca = cmplx_mult( temp[1], conj(temp[1]) );
+			Rxx[1][1].real += temp_pca.real;
+			Rxx[1][1].imag += temp_pca.imag;
+			
+			/*
 			dbl_conver = cmplx_mult_dbl(temp_dbl[0], conj_dbl(temp_dbl[0]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[0][0].real += (double)dbl_conver.real;
 			Rxx_dbl[0][0].imag += (double)dbl_conver.imag;
@@ -356,26 +370,33 @@ void main(void)
 			dbl_conver = cmplx_mult_dbl(temp_dbl[1], conj_dbl(temp_dbl[1]));// Take the conjugate here as cov(X) = XX^H / N when complex
 			Rxx_dbl[1][1].real += (double)dbl_conver.real;
 			Rxx_dbl[1][1].imag += (double)dbl_conver.imag;
+			*/
 		}
-			
+		/*	
 		Rxx_dbl[0][0].real = Rxx_dbl[0][0].real * (double)inv_timeblocks;	
 		Rxx_dbl[0][0].imag = Rxx_dbl[0][0].imag * (double)inv_timeblocks;	
 		Rxx_dbl[0][1].real = Rxx_dbl[0][1].real * (double)inv_timeblocks;
 		Rxx_dbl[0][1].imag = Rxx_dbl[0][1].imag * (double)inv_timeblocks;	
 		Rxx_dbl[1][1].real = Rxx_dbl[1][1].real * (double)inv_timeblocks;
 		Rxx_dbl[1][1].imag = Rxx_dbl[1][1].imag * (double)inv_timeblocks;	
+		*/
+		Rxx[0][0].real = Rxx[0][0].real * inv_timeblocks;	
+		Rxx[0][0].imag = Rxx[0][0].imag * inv_timeblocks;	
+		Rxx[0][1].real = Rxx[0][1].real * inv_timeblocks;
+		Rxx[0][1].imag = Rxx[0][1].imag * inv_timeblocks;	
+		Rxx[1][1].real = Rxx[1][1].real * inv_timeblocks;
+		Rxx[1][1].imag = Rxx[1][1].imag * inv_timeblocks;	
 	
-	
-	
-		//Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
-		//Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
+		Rxx[1][0] = Rxx[0][1]; // Covariance matrix is symetrical
+		Rxx[1][0].imag = Rxx[1][0].imag*(-1); 
 		
 		
-		Rxx_dbl[1][0] = Rxx_dbl[0][1]; // Covariance matrix is symetrical
-		Rxx_dbl[1][0].imag = Rxx_dbl[1][0].imag*(-1); 
+		//Rxx_dbl[1][0] = Rxx_dbl[0][1]; // Covariance matrix is symetrical
+		//Rxx_dbl[1][0].imag = Rxx_dbl[1][0].imag*(-1); 
 		
-		eig_dbl(&Rxx_dbl[0][0], d_dbl, &E_dbl[0][0]);
-		
+		eig(&Rxx[0][0], d, &E[0][0]);
+		//eig_dbl(&Rxx_dbl[0][0], d_dbl, &E_dbl[0][0]);
+		/*
 		d[0].real = (float)d_dbl[0].real;
 		d[0].imag = (float)d_dbl[0].imag;
 		d[1].real = (float)d_dbl[1].real;
@@ -388,7 +409,7 @@ void main(void)
 		E[1][0].imag = (float)E_dbl[1][0].imag;
 		E[1][1].real = (float)E_dbl[1][1].real;
 		E[1][1].imag = (float)E_dbl[1][1].imag;
-
+*/
 		
 		// Fix scaling of the eigenvectors at first freq bin (always seems to be wrong because of eigenvectors)
 	/*	if((k==0) || (k==(N-1)))
@@ -527,10 +548,14 @@ void main(void)
 		for(m=0; m<TIME_BLOCKS; m++)// 2 by many matrix multiplied by many by 2 matrix (in fact the multication is W*X at each freq bin)
 		{
 			index = N*m + k;
-			//cmplx_mult_add(Wp[4*k + 0], X_org[CH1 + index].cart, Wp[4*k + 1], X_org[CH2 + index].cart, &temp[0].real, &temp[0].imag);
-			//cmplx_mult_add(Wp[4*k + 2], X_org[CH1 + index].cart, Wp[4*k + 3], X_org[CH2 + index].cart, &temp[1].real, &temp[1].imag);
+			cmplx_mult_add(Wp[4*k + 0], X_org[CH1 + index].cart, Wp[4*k + 1], X_org[CH2 + index].cart, &temp[0].real, &temp[0].imag);
+			cmplx_mult_add(Wp[4*k + 2], X_org[CH1 + index].cart, Wp[4*k + 3], X_org[CH2 + index].cart, &temp[1].real, &temp[1].imag);
 			
 			
+			S[CH1 + index] = temp[0];
+			S[CH2 + index] = temp[1];
+			
+			/*
 			W_temp_dbl[0].real = (double)(Wp[4*k + 0].real);
 			W_temp_dbl[0].imag = (double)Wp[4*k + 0].imag;
 			W_temp_dbl[1].real = (double)Wp[4*k + 1].real;
@@ -544,7 +569,7 @@ void main(void)
 			X_temp[1].real = (double)X_org[CH2 + index].cart.real;
 			X_temp[1].imag = (double)X_org[CH2 + index].cart.imag;
 			
-			/* Seems that the filtering effect is inftroduced at this point due to the four complex multiplications above */
+			// Seems that the filtering effect is inftroduced at this point due to the four complex multiplications above 
 			temp_dbl[0] =cmplx_mult_dbl(W_temp_dbl[0], X_temp[0]);
 			temp_dbl[1] =cmplx_mult_dbl(W_temp_dbl[1], X_temp[1]);
 			S[CH1 + index].real = temp_dbl[0].real + temp_dbl[1].real;
@@ -552,8 +577,9 @@ void main(void)
 			 
 			temp_dbl[0] =cmplx_mult_dbl(W_temp_dbl[2], X_temp[0]);
 			temp_dbl[1] =cmplx_mult_dbl(W_temp_dbl[3], X_temp[1]);			
-			S[CH2 + index].real = temp_dbl[0].real + temp_dbl[1].real;
-			S[CH2 + index].imag = temp_dbl[0].imag + temp_dbl[1].imag;
+			S[CH2 + index].real = temp[0].real + temp[1].real;
+			S[CH2 + index].imag = temp[0].imag + temp[1].imag;*/
+			
 		}
 	}	
 	
