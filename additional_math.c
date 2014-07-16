@@ -26,7 +26,7 @@ float FastInv4over3(float x)
 	return x;
 }*/
 
-float FastInvSqrt(float x) 
+/*float FastInvSqrt(float x) 
 {
 	float xhalf = 0.5f * x;
 	int i = *(int*)&x;         // evil floating point bit level hacking
@@ -34,7 +34,7 @@ float FastInvSqrt(float x)
 	x = *(float*)&i;
 	x = x*(1.5f-(xhalf*x*x));
 	return x;
-}
+}*/
 
 void inv_2x2(COMPLEX *A, COMPLEX *out)
 {

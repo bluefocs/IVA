@@ -228,7 +228,7 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	* Uses hanning window, divided by length then multiplied by 2.
 	*/
 	unsigned int prevGIE; // Previous global interrupt flag state
-	unsigned int n=0, m=0, step=0;
+	unsigned int n=0, m=0, step=0, overlap_pos=0;
 	unsigned short k=0;
 	
 	//unsigned int no_time_frames <--- was going to be used to introduce zero padding
@@ -244,13 +244,48 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	bit_rev(w, N_INT>>1);/// SINGLE (FLOAT) Offending line ??? -yes!
 
 	
-/*	for(k=0;k<N_INT;k++)
-	{
-		w_dbl[k] = (double)w[k];
-	}*/
-		
+
+	// This loop effectively pads the time domain signal with zeros
 	m=0;//Important!
-	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=step) // N/2 for 50% overlapping 
+	for(n=1; n<((nfreq-1)*2/step); n++) // N/2 for 50% overlapping 
+	{	
+		overlap_pos = step*((nfreq-1)*2/step-n);
+		
+		for(k = 0; k < overlap_pos; k++)
+		{
+			buffer[2 * k] = 0.0;//hanning[k] * xtime[n+k];
+			buffer[2*k+1] = 0.0;
+		}
+		for(k = overlap_pos; k<(nfreq-1)*2; k++)
+		{
+			buffer[2 * k] = hanning[k] * xtime[k - overlap_pos];
+			buffer[2*k+1] = 0.0;
+		}
+		// BUT! memcpy seems to be more efficient - this way you can't use the window
+		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
+		
+		// Calculate 1024 point FFT on current buffers
+		prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		
+		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		bit_rev(buffer, N_INT);
+		
+		//DSPF_sp_cfftr2_dit(buffer, w, N_INT); // Pre-compiled version of above function 
+		//DSPF_dp_cfftr2(N_INT, buffer_dbl, w_dbl, 1);// Double precision experiment - didn't work!
+		//bit_rev_dbl(buffer_dbl, N_INT); // Bit reversal goes afterwards for the forward fft
+		IRQ_globalRestore(prevGIE);
+		
+		memcpy(&X[m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
+		m += nfreq;
+	}
+
+
+
+
+	
+	//m=0;//Important!
+	//for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=step) // N/2 for 50% overlapping 
+	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-N_INT); n+=step) // N/2 for 50% overlapping 
 	{	
 		
 		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
@@ -285,6 +320,39 @@ void stft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		memcpy(&X[m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
 		m += nfreq;
 	}
+	
+	//Overlap with 000s at the end
+	for(n=0; n<((nfreq-1)*2/step); n++) // N/2 for 50% overlapping 
+	{	
+		overlap_pos = step*((nfreq-1)*2/step-n);
+		
+		for(k = 0; k < step*(n+1); k++)
+		{
+			buffer[2 * k] = hanning[k] * xtime[CH2_T - overlap + n*step + k];
+			buffer[2*k+1] = 0.0;
+		}
+		for(k = step*(n+1); k<(nfreq-1)*2; k++)
+		{
+			buffer[2 * k] = 0.0;//hanning[k] * xtime[n+k];
+			buffer[2*k+1] = 0.0;
+		}
+		// BUT! memcpy seems to be more efficient - this way you can't use the window
+		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
+		
+		// Calculate 1024 point FFT on current buffers
+		prevGIE = IRQ_globalDisable(); // Turn off global interrupts
+		
+		DSPF_sp_cfftr2_dit_c(buffer, w, N_INT);
+		bit_rev(buffer, N_INT);
+		
+		//DSPF_sp_cfftr2_dit(buffer, w, N_INT); // Pre-compiled version of above function 
+		//DSPF_dp_cfftr2(N_INT, buffer_dbl, w_dbl, 1);// Double precision experiment - didn't work!
+		//bit_rev_dbl(buffer_dbl, N_INT); // Bit reversal goes afterwards for the forward fft
+		IRQ_globalRestore(prevGIE);
+		
+		memcpy(&X[m], &buffer[0], N*sizeof(complexpair)); // N is half +1 of N_INT
+		m += nfreq;
+	}	
 }
 
 void DSPF_sp_cfftr2_dit_c(float* x, float* w, short n)

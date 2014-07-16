@@ -29,8 +29,8 @@ typedef union complexdata
 #define DSK6713_AIC23_INPUT_LINE 0x0011
 #define N 513	// Number of frequency bins that the processing will be done across (N_INT/2) +1
 #define N_INT 1024 // Original FFT length, INT = initial
-#define STFT_SIZE 80028// 513*156 //40527 // 513*79
-#define TIME_BLOCKS 156 // Actual no. of time blocks
+#define STFT_SIZE 83106 // 513*162 // 513*156 //40527 // 513*79
+#define TIME_BLOCKS 162//156 // Actual no. of time blocks
 #define TIME_BLOCKS_INT 40// Initial number of time blocks (no overlapping)
 #define NSOURCES 2
 #define LEFT 0 
@@ -38,7 +38,7 @@ typedef union complexdata
 #define REAL 0
 #define IMAG 1
 #define CH1 0
-#define CH2 80028//40527// This should be the same as STFT size
+#define CH2 83106//40527// This should be the same as STFT size
 #define CH1_T 0
 #define CH2_T 40960
 #define PI 3.14159265358979323846
