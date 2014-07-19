@@ -159,8 +159,10 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 	
 	
 	
-	m=1; // m is used to index the 'columns' of the stft
-	for(n=0; n<(time_len-fftsize); n+=step)// Should overlap=nfreq?
+	//m=1; // m is used to index the 'columns' of the stft
+	n=0;
+	//for(n=0; n<(time_len-fftsize); n+=step)// Should overlap=nfreq?
+	for(m=0; m< TIME_BLOCKS; m++)
 	{
 		for(k=0; k<start*3; k++)//
 		{
@@ -190,25 +192,28 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 		DSPF_sp_icfftr2_dif_c(buffer, w, N_INT); // Decimation in freq radix 2 IFFT by TI	
 		//IRQ_globalRestore(prevGIE);// Restore previous global interrupt state
 		
-		if (m<(fftsize/step))// This 'if' statement block allows for the overlap of zeros at the beginning and end of the original stft
+		if (m < (fftsize/step - 1))// This 'if' statement block allows for the overlap of zeros at the beginning and end of the original stft
 		{
-			for(k=0; k<fftsize; k++) // Overlap add method
+			for(k = fftsize - (m+1)*step; k<fftsize; k++) // Overlap add method
 			{
-				xtime[n+k] += buffer[2*(k + fftsize - m*step)] * hanning[k + fftsize - m*step] * fftlen_inv; // Only bother with the real part
+				xtime[n + k- (fftsize - (m+1)*step) ] += buffer[2*k] * hanning[k] * fftlen_inv; // Only bother with the real part
 				
-				scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
+				scale[n + k- (fftsize - (m+1)*step) ] += hanning[k] * hanning[k]; // Work out weird scally factor thing
 			}
+			n=0;
 		}
 		else if(m > (TIME_BLOCKS - (fftsize/step)))
 		{
+			//n = (TIME_BLOCKS - (fftsize/step - 1) + TIME_BLOCKS-m)*step;
 			for(k=0; (n+k)<time_len; k++) // Overlap add method
 			{
-				xtime[ n+k + (TIME_BLOCKS-m)*step] += buffer[2 * k] * hanning[k + fftsize - m*step] * fftlen_inv; // Only bother with the real part
+				xtime[ n+k ] += buffer[2* k] * hanning[ k ] * fftlen_inv; // Only bother with the real part
 				
-				scale[ n+k + ((TIME_BLOCKS-m) * step)] += hanning[k] * hanning[k]; // Work out weird scally factor thing
+				scale[ n+k ] += hanning[ k ] * hanning[ k ]; // Work out weird scally factor thing
 			}
+			n+=step;
 		}
-		else
+		else// Should go into this block most of the time
  		{
 			for(k=0; k<fftsize; k++) // Overlap add method
 			{
@@ -216,8 +221,10 @@ void istft(COMPLEX *X, float *xtime, int nfreq, int time_len, int overlap)
 				
 				scale[n+k] += hanning[k] * hanning[k]; // Work out weird scally factor thing
 			}
+			n+=step;
  		}
- 		m++;			
+	
+ 				
 	}
 	
 	
