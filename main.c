@@ -206,47 +206,15 @@ void main(void)
 	}
 	n=0;	
 
-
-
-	
 	while(t<TIME_BLOCKS_INT);// Input data loop
 	
-	
-/*
-	
-	m=0; // Don't think this a problem using m here?
-	// 'Offline' STFT goes here
-	for(n=0; n<((N_INT*TIME_BLOCKS_INT)-(N_INT/2)); n+=(N_INT/2)) // N/2 for 50% overlapping 
-	{	
-		
-		// In order to implement the window you need to loop around every value and multiply it by the relevant coefficient 
-		for(k=0;k<N_INT;k++)
-		{
-
-			buffer1[k].cart.real = hamming[k] * x[CH1_T + n+k];
-			buffer2[k].cart.real = hamming[k] * x[CH2_T + n+k];
-			buffer1[k].cart.imag = 0.0;
-			buffer2[k].cart.imag = 0.0;
-		}
-		// BUT! memcpy seems to be more efficient - this way you can't use the window
-		//memcpy(&buffer, &X[n], N*sizeof(complexpair)); // Copy full 1024 time domain points
-		
-		// Calculate 1024 point FFT on current buffers
-		jack_fft(&buffer1->cart, N_INT, &w_ptr->cart);
-		jack_fft(&buffer2->cart, N_INT, &w_ptr->cart);
-		
-		memcpy(&X[CH1 + n + m].cart, &buffer1[0].cart, N*sizeof(complexpair)); 
-		memcpy(&X[CH2 + n + m].cart, &buffer2[0].cart, N*sizeof(complexpair));
-		m++;
-	}
-	*/
 	stft(&X1_ptr->cart, x, N, 40960, 3*N_INT/4); // First 'microphone'
 	stft(&X2_ptr->cart, &x[CH2_T], N, 40960, 3*N_INT/4); // Second 'microphone'
 	
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-	//istft(&X1_ptr->cart, &x[CH1], N, 40960, 3*N_INT/4);	// This is here to test the function
+	istft(&X1_ptr->cart, &x[CH1], N, 40960, 3*N_INT/4);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins
