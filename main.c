@@ -214,7 +214,7 @@ void main(void)
 	memcpy(&X_org[0], &X[0], (NSOURCES*STFT_SIZE)*sizeof(complexpair)); // Save orginal STFT 
 	DSK6713_LED_on(1);
 	
-	istft(&X1_ptr->cart, &x[CH1], N, 40960, 3*N_INT/4);	// This is here to test the function
+//	istft(&X1_ptr->cart, &x[CH1], N, 40960, 3*N_INT/4);	// This is here to test the function
 	
 	/* PCA STARTS HERE - 2*2 case only*/
 	for(k=0;k<N;k++)// Loop around half the number of frequency bins

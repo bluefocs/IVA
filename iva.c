@@ -23,6 +23,10 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 	COMPLEX Phi[TIME_BLOCKS * NSOURCES];
 	//double SumSsq=0.0, dObj=0.0, pObj=0.0, Obj[600], dlw=0.0, tol = 0.000001, comparison=0.0;
 	
+	// degrees of freedom for Student's t
+	const float v = 2.0;
+	const float v_inv = 1.0/v;
+	
 	// Initialise Ssq
 	for  (m=0; m<(TIME_BLOCKS * NSOURCES); m++)
 	{
@@ -87,14 +91,18 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 			Ssq[ m ] = sqrt(Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
 			Ssq[TIME_BLOCKS+m] = sqrt(Ssq[TIME_BLOCKS+m]); // Channel 2
 			
-			// Calculate the sum of all the values in Ssq before the inverse is taken, this is used in the break condition below
+			//studentst(Ssq)
+			//student's t !!!!
+			//Ssq[ m ] = 1+(v_inv * Ssq[ m ]); // In the future change ^0.5 to ^0.666. Important line! 
+			//Ssq[TIME_BLOCKS+m]= 1+(v_inv * Ssq[TIME_BLOCKS+m]); // Channel 2
+			
+			// Calculate the sum of all the values in Ssq before the inverse is taken, this is used in the exit condition below
 			//SumSsq += Ssq[ m ] + Ssq[TIME_BLOCKS+m];
 			
 			// This 'inversion comes from the derivative of the cost function, G'(ri)/ri (See Yanfeng's EUSIPCO paper)
 			// Does the inversion work in this loop? 
 			Ssq[ m ] = 1.0/(Ssq[ m ] + epsilon);	// Channel 1 - Ssq1 in MATLAB code
-			Ssq[TIME_BLOCKS+m]=1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
-			
+			Ssq[TIME_BLOCKS+m] = 1.0/(Ssq[TIME_BLOCKS+m] + epsilon);	//Channel 2
 		}
 		
 
@@ -120,9 +128,10 @@ void iva(COMPLEX *Xp, COMPLEX *Wp, unsigned short nfreq)
 				ch2_i = ch1_i + CH2; // Channel 2 index
 				Phi[ CH1 + m ].real = S[ch1_i].real * Ssq[CH1 + m]; // Phi exists at each frequency bin for each channel
 				Phi[ CH1 + m ].imag = S[ch1_i].imag * Ssq[CH1 + m];	
-				Phi[TIME_BLOCKS+m].real = S[ch2_i].real * Ssq[TIME_BLOCKS + m]; // Phi exists at each frequency bin for each channel
-				Phi[TIME_BLOCKS+m].imag = S[ch2_i].imag * Ssq[TIME_BLOCKS + m];			
+				Phi[TIME_BLOCKS+m].real= S[ch2_i].real * Ssq[TIME_BLOCKS+m]; // Phi exists at each frequency bin for each channel
+				Phi[TIME_BLOCKS+m].imag= S[ch2_i].imag * Ssq[TIME_BLOCKS+m];			
 			}
+			
 			
 			W_temp[0].real=0.0;
 			W_temp[0].imag=0.0;
